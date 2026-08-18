@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "react-router build",
+    "build:wasm": "bash scripts/build-simba-wasm.sh",
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
     "preview": "npm run build && vite preview",

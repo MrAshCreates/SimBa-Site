@@ -1,11 +1,28 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::fs;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::{Path, PathBuf};
+#[cfg(not(target_arch = "wasm32"))]
 use std::process::Command;
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::atomic::{AtomicU64, Ordering};
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(target_arch = "wasm32")]
+pub fn run_python(_code: &str) -> Result<String, String> {
+    Err("Embedded Python (`$python` ... `python$`) is not available in the online playground. Use the SimBa CLI locally.".to_string())
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn run_rust(_code: &str) -> Result<String, String> {
+    Err("Embedded Rust (`$rust` ... `rust$`) is not available in the online playground. Use the SimBa CLI locally.".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 static EMBED_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn run_python(code: &str) -> Result<String, String> {
     let work_dir = unique_temp_dir("simba-python")?;
     let script_path = work_dir.join("embedded.py");
@@ -36,6 +53,7 @@ pub fn run_python(code: &str) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn run_rust(code: &str) -> Result<String, String> {
     let work_dir = unique_temp_dir("simba-rust")?;
     let source_path = work_dir.join("embedded.rs");
@@ -90,6 +108,7 @@ pub fn run_rust(code: &str) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&run.stdout).to_string())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn wrap_rust_source(code: &str) -> String {
     let trimmed = code.trim();
     if trimmed.contains("fn main") {
@@ -99,6 +118,7 @@ fn wrap_rust_source(code: &str) -> String {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn rustc_bin() -> String {
     let mut candidates = vec!["rustc".to_string()];
     if let Ok(home) = std::env::var("HOME") {
@@ -115,6 +135,7 @@ fn rustc_bin() -> String {
     "rustc".to_string()
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn python_bin() -> String {
     let mut candidates = vec![
         "python3".to_string(),
@@ -140,6 +161,7 @@ fn python_bin() -> String {
     "python3".to_string()
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn command_exists(bin: &str) -> bool {
     Command::new(bin)
         .arg("--version")
@@ -148,6 +170,7 @@ fn command_exists(bin: &str) -> bool {
         .unwrap_or(false)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn unique_temp_dir(prefix: &str) -> Result<PathBuf, String> {
     let n = EMBED_COUNTER.fetch_add(1, Ordering::Relaxed);
     let nanos = SystemTime::now()

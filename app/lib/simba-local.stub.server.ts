@@ -5,7 +5,7 @@ export async function runSimbaSourceLocal(_code: string, resolvedMode: SimbaRunM
     status: "error",
     stdout: "",
     stderr:
-      "The SimBa interpreter cannot run on Cloudflare Workers (no local filesystem or process spawn). Use `npm run dev` on your machine to execute programs.",
+      "The SimBa interpreter is unavailable in this environment.",
     output: "",
     mode: resolvedMode,
   };

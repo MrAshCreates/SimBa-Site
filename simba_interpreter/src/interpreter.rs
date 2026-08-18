@@ -1,7 +1,9 @@
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
 use crate::{Stmt, Expr, Token, Value};
 use crate::embed;
+
+const MAX_STEPS: u32 = 2_000_000;
+const MAX_OUTPUT: usize = 100_000;
 
 #[derive(Clone)]
 struct FunctionDef {
@@ -20,6 +22,8 @@ pub struct Interpreter {
     pub globals: HashMap<String, Value>,
     functions: HashMap<String, FunctionDef>,
     debug: bool,
+    output: String,
+    steps: u32,
 }
 
 impl Interpreter {
@@ -28,11 +32,46 @@ impl Interpreter {
             globals: HashMap::new(),
             functions: HashMap::new(),
             debug: false,
+            output: String::new(),
+            steps: 0,
         }
     }
 
     pub fn set_debug(&mut self, debug: bool) {
         self.debug = debug;
+    }
+
+    pub fn take_output(&mut self) -> String {
+        std::mem::take(&mut self.output)
+    }
+
+    fn emit(&mut self, text: &str) {
+        if self.output.len() >= MAX_OUTPUT {
+            return;
+        }
+        let remaining = MAX_OUTPUT - self.output.len();
+        let slice = if text.len() > remaining {
+            &text[..remaining]
+        } else {
+            text
+        };
+        self.output.push_str(slice);
+    }
+
+    fn emit_line(&mut self, text: &str) {
+        self.emit(text);
+        if !text.ends_with('\n') {
+            self.emit("\n");
+        }
+    }
+
+    fn tick(&mut self) -> Result<(), String> {
+        self.steps = self.steps.saturating_add(1);
+        if self.steps > MAX_STEPS {
+            Err("Program ran too long (step limit). Check for an infinite loop.".to_string())
+        } else {
+            Ok(())
+        }
     }
 
     pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), String> {
@@ -43,18 +82,19 @@ impl Interpreter {
         }
     }
 
-    fn debug_log(&self, message: &str) {
+    fn debug_log(&mut self, message: &str) {
         if self.debug {
-            println!("[debug] {message}");
+            self.emit_line(&format!("[debug] {message}"));
         }
     }
 
     fn execute(&mut self, stmt: &Stmt) -> Result<ExecResult, String> {
+        self.tick()?;
         match stmt {
             Stmt::Print(expr) => {
                 let value = self.evaluate(expr)?;
                 self.debug_log(&format!("print {value}"));
-                println!("{}", value);
+                self.emit_line(&value.to_string());
             }
             Stmt::VarDecl(name, expr) | Stmt::Assignment(name, expr) => {
                 let value = self.evaluate(expr)?;
@@ -137,20 +177,14 @@ impl Interpreter {
                 self.debug_log("running embedded Rust");
                 let output = embed::run_rust(code)?;
                 if !output.is_empty() {
-                    print!("{output}");
-                    if !output.ends_with('\n') {
-                        println!();
-                    }
+                    self.emit_line(&output);
                 }
             }
             Stmt::PythonBlock(code) => {
                 self.debug_log("running embedded Python");
                 let output = embed::run_python(code)?;
                 if !output.is_empty() {
-                    print!("{output}");
-                    if !output.ends_with('\n') {
-                        println!();
-                    }
+                    self.emit_line(&output);
                 }
             }
         }
@@ -231,11 +265,7 @@ impl Interpreter {
         match name {
             "clock" => {
                 self.require_arity(name, arguments, 0)?;
-                let ms = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map(|d| d.as_millis() as i64)
-                    .unwrap_or(0);
-                return Ok(Value::Integer(ms));
+                return Ok(Value::Integer(unix_millis()));
             }
             "str" => {
                 self.require_arity(name, arguments, 1)?;
@@ -394,5 +424,20 @@ impl Interpreter {
             }
         }
         Ok(ExecResult::Normal)
+    }
+}
+
+fn unix_millis() -> i64 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        js_sys::Date::now() as i64
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0)
     }
 }

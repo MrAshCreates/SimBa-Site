@@ -6,9 +6,18 @@ description = "SimBa Programming Language Interpreter"
 authors = ["Asher Winstead <asher@mrashcreates.xyz>"]
 license = "MIT"
 
+[lib]
+name = "simba"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 logos = "0.16.1"
 clap = { version = "4.5.21", features = ["derive"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.127"
+js-sys = "0.3"
 
 [[bin]]
 name = "simba"
