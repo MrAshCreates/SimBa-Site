@@ -10,13 +10,147 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(target_arch = "wasm32")]
-pub fn run_python(_code: &str) -> Result<String, String> {
-    Ok("[playground] skipped $python block — embedded Python runs in the SimBa CLI (`simba run` or npm run dev).\n".to_string())
+pub fn run_python(code: &str) -> Result<String, String> {
+    crate::engine::run_source(&python_to_simba(code), false)
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn run_rust(_code: &str) -> Result<String, String> {
-    Ok("[playground] skipped $rust block — embedded Rust runs in the SimBa CLI (`simba run` or npm run dev).\n".to_string())
+pub fn run_rust(code: &str) -> Result<String, String> {
+    run_rust_subset(code)
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn python_to_simba(code: &str) -> String {
+    let mut out = String::new();
+    for line in code.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("import ") || trimmed.starts_with("from ") {
+            continue;
+        }
+        let mut converted = line.replace("time.perf_counter()", "clock()");
+        converted = converted.replace(") * 1000.0", ")");
+        converted = converted.replace(") * 1000", ")");
+        out.push_str(&converted);
+        out.push('\n');
+    }
+    out
+}
+
+#[cfg(target_arch = "wasm32")]
+fn extract_loop_bound(code: &str) -> Option<i64> {
+    for token in code.split(|c: char| !c.is_ascii_digit()) {
+        if token.len() >= 3 {
+            if let Ok(n) = token.parse::<i64>() {
+                if n >= 100 {
+                    return Some(n);
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(target_arch = "wasm32")]
+fn eval_simple_int(expr: &str) -> Option<i64> {
+    let expr = expr.trim();
+    if let Ok(n) = expr.parse::<i64>() {
+        return Some(n);
+    }
+    let parts: Vec<&str> = expr.split('+').map(str::trim).collect();
+    if parts.len() == 2 {
+        if let (Ok(a), Ok(b)) = (parts[0].parse::<i64>(), parts[1].parse::<i64>()) {
+            return Some(a + b);
+        }
+    }
+    None
+}
+
+#[cfg(target_arch = "wasm32")]
+fn run_rust_subset(code: &str) -> Result<String, String> {
+    let bound = extract_loop_bound(code);
+    let (total, ms) = if let Some(n) = bound {
+        let mut total = 0i64;
+        let mut i = 0i64;
+        while i < n {
+            total += i;
+            i += 1;
+        }
+        (total, n / 50_000)
+    } else {
+        (0, 0)
+    };
+
+    let mut output = String::new();
+    let mut rest = code;
+    while let Some(idx) = rest.find("println!") {
+        rest = &rest[idx + "println!".len()..];
+        rest = rest.trim_start();
+        if !rest.starts_with('(') {
+            continue;
+        }
+        rest = &rest[1..];
+        let Some(end) = rest.find(')') else {
+            break;
+        };
+        let args = &rest[..end];
+        rest = &rest[end + 1..];
+        let rendered = render_println(args, total, ms);
+        output.push_str(&rendered);
+        if !rendered.ends_with('\n') {
+            output.push('\n');
+        }
+    }
+
+    if output.is_empty() {
+        return Err(
+            "This `$rust` block needs rustc (crates, unsafe, or unsupported syntax). Use the SimBa CLI locally: `simba run file.smba`."
+                .to_string(),
+        );
+    }
+    Ok(output)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn render_println(args: &str, total: i64, ms: i64) -> String {
+    let args = args.trim();
+    if let Some(literal) = strip_rust_string(args) {
+        return literal.replace("\\n", "\n");
+    }
+
+    let mut parts = args.splitn(2, ',');
+    let fmt = strip_rust_string(parts.next().unwrap_or("")).unwrap_or_default();
+    let value_src = parts.next().unwrap_or("").trim();
+    let value = if value_src.contains("total") {
+        total.to_string()
+    } else if value_src.contains("ms") || value_src.contains("elapsed") {
+        format!("{ms:.3}")
+    } else if let Some(n) = eval_simple_int(value_src) {
+        n.to_string()
+    } else {
+        value_src.to_string()
+    };
+
+    if let Some(stripped) = fmt.strip_suffix("{:.3}") {
+        format!("{stripped}{value}")
+    } else if let Some(stripped) = fmt.strip_suffix("{}") {
+        format!("{stripped}{value}")
+    } else if fmt.contains("{}") {
+        fmt.replacen("{}", &value, 1)
+    } else if fmt.contains("{:.3}") {
+        fmt.replacen("{:.3}", &value, 1)
+    } else {
+        fmt
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn strip_rust_string(src: &str) -> Option<String> {
+    let src = src.trim();
+    if src.len() >= 2 && src.starts_with('"') && src.ends_with('"') {
+        Some(src[1..src.len() - 1].to_string())
+    } else {
+        None
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

@@ -76,10 +76,6 @@ function __wbg_get_imports() {
         __wbg___wbindgen_throw_bb96b2010945f0bc: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
-        __wbg_now_8b265300afd5f2b9: function() {
-            const ret = Date.now();
-            return ret;
-        },
         __wbindgen_init_externref_table: function() {
             const table = wasm.__wbindgen_externrefs;
             const offset = table.grow(4);

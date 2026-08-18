@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, Fragment } from "react";
+import { useState, useRef, useCallback, useEffect, Fragment } from "react";
 import { Link } from "react-router";
 import classNames from "classnames";
 import { Editor } from "@monaco-editor/react";
@@ -285,6 +285,17 @@ export function CodeEditor({
 
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<Parameters<BeforeMount>[0] | null>(null);
+
+  useEffect(() => {
+    const lines = value.split("\n").length;
+    setEditorStats({ lines, chars: value.length });
+    const position = editorRef.current?.getPosition();
+    if (position) {
+      setCursorPosition({ line: position.lineNumber, column: position.column });
+    } else {
+      setCursorPosition({ line: 1, column: 1 });
+    }
+  }, [value, filePath]);
 
   // Register SimBa language with Monaco
   const handleEditorWillMount = useCallback<BeforeMount>((monaco) => {

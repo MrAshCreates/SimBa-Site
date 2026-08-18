@@ -2,7 +2,6 @@ use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum Token {
-    // Keywords
     #[token("let")]
     Let,
     #[token("print")]
@@ -44,8 +43,13 @@ pub enum Token {
     False,
     #[token("mut")]
     Mut,
+    #[token("import")]
+    Import,
+    #[token("from")]
+    From,
 
-    // Symbols
+    #[token("->")]
+    Arrow,
     #[token("+")]
     Plus,
     #[token("-")]
@@ -70,6 +74,16 @@ pub enum Token {
     LeftBrace,
     #[token("}")]
     RightBrace,
+    #[token("[")]
+    LeftBracket,
+    #[token("]")]
+    RightBracket,
+    #[token("&")]
+    Ampersand,
+    #[token(".")]
+    Dot,
+    #[token("|")]
+    Pipe,
     #[token(";")]
     Semicolon,
     #[token(",")]
@@ -91,31 +105,46 @@ pub enum Token {
     #[token("<=")]
     LessEqual,
 
-    // Literals
-    #[regex(r#""(?:\\.|[^"\\])*""#, |lex| {
-        let slice = lex.slice();
-        let unquoted = &slice[1..slice.len() - 1];
-        unquoted.to_string()
-    })]
+    #[regex(r#"f"(?:\\.|[^"\\])*""#, lex_fstring)]
+    FString(String),
+    #[regex(r#""(?:\\.|[^"\\])*""#, lex_string)]
     StringLiteral(String),
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
     Integer(i64),
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*", |lex| lex.slice().to_string())]
     Identifier(String),
 
-    // Embedded code blocks
     #[token("$rust", lex_rust_code)]
     RustCode(String),
-
     #[token("$python", lex_python_code)]
     PythonCode(String),
 
-    // Whitespace and comments (skipped)
-    #[regex(r"[ \t\r\n]+", logos::skip)]
+    #[regex(r"[ \t\r]+", logos::skip)]
     #[regex(r"//[^\n]*", logos::skip, allow_greedy = true)]
     #[regex(r"#[^\n]*", logos::skip, allow_greedy = true)]
     #[regex(r"/\*([^*]|\*[^/])*\*/", logos::skip)]
     Skip,
+
+    /// Injected by the indent tokenizer.
+    #[token("@@INDENT")]
+    Indent,
+    #[token("@@DEDENT")]
+    Dedent,
+    #[token("@@NEWLINE")]
+    Newline,
+}
+
+fn lex_string(lex: &mut logos::Lexer<Token>) -> Option<String> {
+    let slice = lex.slice();
+    let unquoted = &slice[1..slice.len() - 1];
+    Some(unquoted.to_string())
+}
+
+fn lex_fstring(lex: &mut logos::Lexer<Token>) -> Option<String> {
+    let slice = lex.slice();
+    // f"..."
+    let unquoted = &slice[2..slice.len() - 1];
+    Some(unquoted.to_string())
 }
 
 fn lex_rust_code(lex: &mut logos::Lexer<Token>) -> Option<String> {

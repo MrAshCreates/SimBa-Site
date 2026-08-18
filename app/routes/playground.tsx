@@ -845,6 +845,7 @@ export default function Playground() {
                 <div className={styles.editorContainer}>
                   {activeFile ? (
                     <CodeEditor
+                      key={activeFile.id}
                       value={activeFile.content}
                       onChange={(content) => updateFileContent(activeFile.id, content)}
                       title={activeFile.name}

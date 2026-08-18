@@ -10,14 +10,24 @@ struct Tok {
 }
 
 fn peek(tokens: &VecDeque<Tok>) -> Option<&Token> {
-    tokens.front().map(|t| &t.token)
+    tokens
+        .iter()
+        .find(|t| !matches!(t.token, Token::Newline))
+        .map(|t| &t.token)
 }
 
 fn peek_line(tokens: &VecDeque<Tok>) -> usize {
-    tokens.front().map(|t| t.line).unwrap_or(1)
+    tokens
+        .iter()
+        .find(|t| !matches!(t.token, Token::Newline))
+        .map(|t| t.line)
+        .unwrap_or(1)
 }
 
 fn take(tokens: &mut VecDeque<Tok>) -> Option<Token> {
+    while matches!(tokens.front().map(|t| &t.token), Some(Token::Newline)) {
+        tokens.pop_front();
+    }
     tokens.pop_front().map(|t| t.token)
 }
 
@@ -116,7 +126,7 @@ pub fn compile_source(source: &str) -> Result<(), String> {
 fn parse(tokens: &mut VecDeque<Tok>, debug_mode: bool) -> Result<Vec<Stmt>, String> {
     let mut statements = Vec::new();
 
-    while let Some(_) = tokens.front() {
+    while peek(tokens).is_some() {
         match parse_statement(tokens, debug_mode) {
             Ok(stmt) => statements.push(stmt),
             Err(e) => return Err(format!("Parse error on {}: {}", at(tokens), e)),
@@ -137,6 +147,7 @@ fn parse_statement(
         Some(Token::While) => parse_while_statement(tokens, debug_mode),
         Some(Token::For) => parse_for_statement(tokens, debug_mode),
         Some(Token::Func) => parse_function(tokens, debug_mode),
+        Some(Token::Import) | Some(Token::From) => parse_import(tokens),
         Some(Token::Return) => parse_return_statement(tokens, debug_mode),
         Some(Token::Break) => {
             take(tokens);
@@ -156,6 +167,9 @@ fn parse_statement(
         Some(Token::LeftBrace) => {
             let block = parse_block(tokens, debug_mode)?;
             Ok(Stmt::Block(block))
+        }
+        Some(Token::Identifier(name)) if name == "python" || name == "rust" => {
+            parse_named_embed(tokens, debug_mode, &name)
         }
         Some(Token::Identifier(_)) => parse_assignment_or_expression(tokens, debug_mode),
         Some(Token::RustCode(code)) => {
@@ -185,16 +199,64 @@ fn parse_print_statement(
     Ok(Stmt::Print(expr))
 }
 
+fn skip_type_expr(tokens: &mut VecDeque<Tok>) -> Result<(), String> {
+    if matches!(peek(tokens), Some(Token::Ampersand)) {
+        take(tokens);
+    }
+    if matches!(peek(tokens), Some(Token::Mut)) {
+        take(tokens);
+    }
+    match take(tokens) {
+        Some(Token::Identifier(_)) => {}
+        other => {
+            return Err(format!(
+                "Expected a type name, found {:?}. Try `x: int = 5` or `def f() -> str:`.",
+                other
+            ));
+        }
+    }
+    if matches!(peek(tokens), Some(Token::LeftBracket | Token::LessThan)) {
+        let expected = if matches!(peek(tokens), Some(Token::LeftBracket)) {
+            Token::RightBracket
+        } else {
+            Token::GreaterThan
+        };
+        take(tokens);
+        loop {
+            if peek(tokens).is_none() {
+                return Err("Unfinished type argument list".to_string());
+            }
+            if peek(tokens) == Some(&expected) {
+                take(tokens);
+                break;
+            }
+            if matches!(peek(tokens), Some(Token::Comma | Token::Pipe)) {
+                take(tokens);
+                continue;
+            }
+            skip_type_expr(tokens)?;
+        }
+    }
+    if matches!(peek(tokens), Some(Token::Pipe)) {
+        take(tokens);
+        skip_type_expr(tokens)?;
+    }
+    Ok(())
+}
+
 fn skip_optional_type(tokens: &mut VecDeque<Tok>) -> Result<(), String> {
     if matches!(peek(tokens), Some(Token::Colon)) {
         take(tokens);
-        match take(tokens) {
-            Some(Token::Identifier(_)) => Ok(()),
-            other => Err(format!(
-                "Expected a type name after `:`, found {:?}. Try `x: int = 5`.",
-                other
-            )),
-        }
+        skip_type_expr(tokens)
+    } else {
+        Ok(())
+    }
+}
+
+fn skip_return_type(tokens: &mut VecDeque<Tok>) -> Result<(), String> {
+    if matches!(peek(tokens), Some(Token::Arrow)) {
+        take(tokens);
+        skip_type_expr(tokens)
     } else {
         Ok(())
     }
@@ -384,7 +446,48 @@ fn parse_postfix(
 ) -> Result<Expr, String> {
     let mut expr = parse_primary(tokens, debug_mode)?;
 
-    while matches!(peek(tokens), Some(Token::LeftParen)) {
+    while matches!(peek(tokens), Some(Token::LeftParen | Token::Dot)) {
+        if matches!(peek(tokens), Some(Token::Dot)) {
+            take(tokens);
+            let method = if let Some(Token::Identifier(name)) = take(tokens) {
+                name
+            } else {
+                return Err(format!("Expected a name after `.` on {}", at(tokens)));
+            };
+            let object = match expr {
+                Expr::Identifier(name) => name,
+                _ => {
+                    return Err(format!(
+                        "Playground SimBa only supports `module.fn()` calls like `time.perf_counter()` on {}",
+                        at(tokens)
+                    ));
+                }
+            };
+            let callee = format!("{object}.{method}");
+            if matches!(peek(tokens), Some(Token::LeftParen)) {
+                take(tokens);
+                let mut arguments = Vec::new();
+                if peek(tokens) != Some(&Token::RightParen) {
+                    loop {
+                        arguments.push(parse_expression(tokens, debug_mode)?);
+                        if matches!(peek(tokens), Some(Token::Comma)) {
+                            take(tokens);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                expect_token(tokens, Token::RightParen)?;
+                expr = Expr::Call {
+                    callee,
+                    arguments,
+                };
+            } else {
+                expr = Expr::Identifier(callee);
+            }
+            continue;
+        }
+
         take(tokens);
 
         let mut arguments = Vec::new();
@@ -421,6 +524,7 @@ fn parse_primary(
     match take(tokens) {
         Some(Token::Integer(value)) => Ok(Expr::Integer(value)),
         Some(Token::StringLiteral(value)) => Ok(Expr::String(value)),
+        Some(Token::FString(value)) => interpolate_fstring(&value, debug_mode),
         Some(Token::True) => Ok(Expr::Bool(true)),
         Some(Token::False) => Ok(Expr::Bool(false)),
         Some(Token::Identifier(name)) => Ok(Expr::Identifier(name)),
@@ -448,7 +552,7 @@ fn expect_token(tokens: &mut VecDeque<Tok>, expected: Token) -> Result<(), Strin
     match take(tokens) {
         Some(token) if token == expected => Ok(()),
         Some(token) => Err(format!(
-            "Expected {:?}, found {:?} on {}. Hint: SimBa blocks use `{{ }}`, and `if`/`while`/`for` do not require parentheses.",
+            "Expected {:?}, found {:?} on {}. Hint: SimBa blocks use indentation (like Python) or `{{ }}`.",
             expected,
             token,
             at(tokens)
@@ -473,27 +577,315 @@ fn parse_condition(tokens: &mut VecDeque<Tok>, debug_mode: bool) -> Result<Expr,
 }
 
 fn tokenize(input: &str) -> Result<Vec<Tok>, String> {
+    tokenize_with_indents(input)
+}
+
+fn starts_word(src: &str, word: &str) -> bool {
+    src.starts_with(word)
+        && match src.as_bytes().get(word.len()) {
+            Some(b) => !b.is_ascii_alphanumeric() && *b != b'_',
+            None => true,
+        }
+}
+
+fn consume_braced_block(src: &str) -> Option<(&str, usize)> {
+    let bytes = src.as_bytes();
+    let start = src.find('{')?;
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut escaped = false;
+    for (i, ch) in src[start..].char_indices() {
+        let idx = start + i;
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_string = true,
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    let inner = &src[start + 1..idx];
+                    return Some((inner, idx + 1));
+                }
+            }
+            _ => {}
+        }
+    }
+    let _ = bytes;
+    None
+}
+
+fn tokenize_with_indents(input: &str) -> Result<Vec<Tok>, String> {
     use logos::Logos;
 
-    let mut lexer = Token::lexer(input);
     let mut tokens = Vec::new();
+    let mut indent_stack = vec![0usize];
+    let mut pos = 0usize;
+    let mut line = 1usize;
+    let mut at_bol = true;
+    let mut pending_colon_indent = false;
 
-    while let Some(token_result) = lexer.next() {
-        let start = lexer.span().start;
-        let line = input[..start].bytes().filter(|b| *b == b'\n').count() + 1;
-        match token_result {
-            Ok(token) => tokens.push(Tok { token, line }),
-            Err(_) => {
-                let ch = input[start..].chars().next().unwrap_or('?');
+    while pos < input.len() {
+        if at_bol {
+            let mut indent = 0usize;
+            while pos < input.len() {
+                match input.as_bytes()[pos] {
+                    b' ' => {
+                        indent += 1;
+                        pos += 1;
+                    }
+                    b'\t' => {
+                        indent += 8;
+                        pos += 1;
+                    }
+                    _ => break,
+                }
+            }
+            if pos >= input.len() {
+                break;
+            }
+            if input.as_bytes()[pos] == b'\n' {
+                pos += 1;
+                line += 1;
+                continue;
+            }
+            if input[pos..].starts_with('#') || input[pos..].starts_with("//") {
+                while pos < input.len() && input.as_bytes()[pos] != b'\n' {
+                    pos += 1;
+                }
+                continue;
+            }
+
+            let current = *indent_stack.last().unwrap();
+            if pending_colon_indent {
+                pending_colon_indent = false;
+                if indent <= current {
+                    return Err(format!("line {line}: expected an indented block after `:`"));
+                }
+                indent_stack.push(indent);
+                tokens.push(Tok {
+                    token: Token::Indent,
+                    line,
+                });
+            } else {
+                while indent < *indent_stack.last().unwrap() {
+                    indent_stack.pop();
+                    tokens.push(Tok {
+                        token: Token::Dedent,
+                        line,
+                    });
+                }
+            }
+            at_bol = false;
+            continue;
+        }
+
+        if input.as_bytes()[pos] == b'\n' {
+            pos += 1;
+            line += 1;
+            at_bol = true;
+            tokens.push(Tok {
+                token: Token::Newline,
+                line: line - 1,
+            });
+            continue;
+        }
+
+        if matches!(input.as_bytes()[pos], b' ' | b'\t' | b'\r') {
+            pos += 1;
+            continue;
+        }
+
+        if input[pos..].starts_with('#') || input[pos..].starts_with("//") {
+            while pos < input.len() && input.as_bytes()[pos] != b'\n' {
+                pos += 1;
+            }
+            continue;
+        }
+
+        if starts_word(&input[pos..], "$python") || starts_word(&input[pos..], "$rust") {
+            let (is_python, prefix, closer) = if input[pos..].starts_with("$python") {
+                (true, "$python".len(), "python$")
+            } else {
+                (false, "$rust".len(), "rust$")
+            };
+            let start = pos + prefix;
+            let Some(rel) = input[start..].find(closer) else {
                 return Err(format!(
-                    "line {}: invalid character `{}`. SimBa comments use `#` or `//`. Strings use double quotes. Embeds use `$python` ... `python$` and `$rust` ... `rust$`.",
-                    line, ch
+                    "line {line}: unclosed `{}` embed",
+                    if is_python { "$python" } else { "$rust" }
+                ));
+            };
+            let inner = input[start..start + rel].to_string();
+            let token = if is_python {
+                Token::PythonCode(inner.clone())
+            } else {
+                Token::RustCode(inner.clone())
+            };
+            tokens.push(Tok { token, line });
+            line += inner.bytes().filter(|b| *b == b'\n').count();
+            pos = start + rel + closer.len();
+            continue;
+        }
+
+        if starts_word(&input[pos..], "python") || starts_word(&input[pos..], "rust") {
+            let name_len = if input[pos..].starts_with("python") { 6 } else { 4 };
+            let after_name = input[pos + name_len..].trim_start_matches([' ', '\t']);
+            if after_name.starts_with('{') {
+                let kind = if name_len == 6 { "python" } else { "rust" };
+                let offset = input[pos + name_len..]
+                    .find('{')
+                    .map(|i| pos + name_len + i)
+                    .unwrap();
+                let Some((inner, end)) = consume_braced_block(&input[offset..]) else {
+                    return Err(format!("line {line}: unclosed `{kind} {{ ... }}` embed"));
+                };
+                let abs_end = offset + end;
+                let token = if kind == "python" {
+                    Token::PythonCode(inner.to_string())
+                } else {
+                    Token::RustCode(inner.to_string())
+                };
+                tokens.push(Tok { token, line });
+                line += input[pos..abs_end].bytes().filter(|b| *b == b'\n').count();
+                pos = abs_end;
+                continue;
+            }
+        }
+
+        let rest = &input[pos..];
+        let mut lexer = Token::lexer(rest);
+        match lexer.next() {
+            Some(Ok(token)) => {
+                let span = lexer.span();
+                if span.start != 0 {
+                    let ch = rest.chars().next().unwrap_or('?');
+                    return Err(format!(
+                        "line {line}: invalid character `{ch}`. SimBa comments use `#` or `//`. Strings use double quotes. Embeds use `$python` ... `python$` or `python {{ ... }}`."
+                    ));
+                }
+                pos += span.end;
+                pending_colon_indent = matches!(token, Token::Colon);
+                tokens.push(Tok { token, line });
+            }
+            Some(Err(_)) => {
+                let ch = rest.chars().next().unwrap_or('?');
+                return Err(format!(
+                    "line {line}: invalid character `{ch}`. SimBa comments use `#` or `//`. Strings use double quotes. Embeds use `$python` ... `python$` and `$rust` ... `rust$`."
                 ));
             }
+            None => break,
         }
     }
 
+    while indent_stack.len() > 1 {
+        indent_stack.pop();
+        tokens.push(Tok {
+            token: Token::Dedent,
+            line,
+        });
+    }
+
     Ok(tokens)
+}
+
+fn interpolate_fstring(raw: &str, debug_mode: bool) -> Result<Expr, String> {
+    let mut parts: Vec<Expr> = Vec::new();
+    let mut buf = String::new();
+    let mut chars = raw.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '{' {
+            if chars.peek() == Some(&'{') {
+                chars.next();
+                buf.push('{');
+                continue;
+            }
+            if !buf.is_empty() {
+                parts.push(Expr::String(std::mem::take(&mut buf)));
+            }
+            let mut inner = String::new();
+            let mut depth = 1;
+            while let Some(ch) = chars.next() {
+                if ch == '{' {
+                    depth += 1;
+                    inner.push(ch);
+                } else if ch == '}' {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                    inner.push(ch);
+                } else {
+                    inner.push(ch);
+                }
+            }
+            let expr_src = inner.split_once(':').map(|(left, _)| left).unwrap_or(&inner).trim();
+            if expr_src.is_empty() {
+                return Err("Empty f-string interpolation `{}`".to_string());
+            }
+            let mut inner_tokens: VecDeque<Tok> = tokenize(expr_src)?.into();
+            let expr = parse_expression(&mut inner_tokens, debug_mode)?;
+            parts.push(expr);
+        } else if c == '}' {
+            if chars.peek() == Some(&'}') {
+                chars.next();
+                buf.push('}');
+            } else {
+                buf.push(c);
+            }
+        } else {
+            buf.push(c);
+        }
+    }
+    if !buf.is_empty() {
+        parts.push(Expr::String(buf));
+    }
+    if parts.is_empty() {
+        return Ok(Expr::String(String::new()));
+    }
+    let mut expr = parts.remove(0);
+    for part in parts {
+        expr = Expr::Binary {
+            left: Box::new(expr),
+            operator: Token::Plus,
+            right: Box::new(part),
+        };
+    }
+    Ok(expr)
+}
+
+fn parse_import(tokens: &mut VecDeque<Tok>) -> Result<Stmt, String> {
+    take(tokens);
+    while matches!(
+        peek(tokens),
+        Some(Token::Identifier(_) | Token::Comma | Token::Dot | Token::Asterisk | Token::Import)
+    ) {
+        take(tokens);
+    }
+    expect_semicolon(tokens);
+    Ok(Stmt::Pass)
+}
+
+fn parse_named_embed(tokens: &mut VecDeque<Tok>, _debug_mode: bool, name: &str) -> Result<Stmt, String> {
+    match peek(tokens).cloned() {
+        Some(Token::PythonCode(code)) if name == "python" => {
+            take(tokens);
+            Ok(Stmt::PythonBlock(code))
+        }
+        Some(Token::RustCode(code)) if name == "rust" => {
+            take(tokens);
+            Ok(Stmt::RustBlock(code))
+        }
+        _ => parse_assignment_or_expression(tokens, false),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -525,9 +917,6 @@ fn parse_if_statement(
 ) -> Result<Stmt, String> {
     take(tokens);
     let condition = parse_condition(tokens, debug_mode)?;
-    if matches!(peek(tokens), Some(Token::Colon)) {
-        return Err("Python colons are not used in SimBa. Write `if cond { ... }` with braces.".to_string());
-    }
     let then_branch = parse_block(tokens, debug_mode)?;
     let else_branch = parse_else_branch(tokens, debug_mode)?;
 
@@ -570,6 +959,22 @@ fn parse_block(
     tokens: &mut VecDeque<Tok>,
     debug_mode: bool,
 ) -> Result<Vec<Stmt>, String> {
+    if matches!(peek(tokens), Some(Token::Colon)) {
+        take(tokens);
+        if matches!(peek(tokens), Some(Token::Indent)) {
+            take(tokens);
+            let mut statements = Vec::new();
+            while peek(tokens).is_some() && !matches!(peek(tokens), Some(Token::Dedent)) {
+                statements.push(parse_statement(tokens, debug_mode)?);
+            }
+            if matches!(peek(tokens), Some(Token::Dedent)) {
+                take(tokens);
+            }
+            return Ok(statements);
+        }
+        return Ok(vec![parse_statement(tokens, debug_mode)?]);
+    }
+
     expect_token(tokens, Token::LeftBrace)?;
     let mut statements = Vec::new();
 
@@ -608,6 +1013,7 @@ fn parse_function(
         }
     }
     expect_token(tokens, Token::RightParen)?;
+    skip_return_type(tokens)?;
     let body = parse_block(tokens, debug_mode)?;
 
     Ok(Stmt::Function {
@@ -637,9 +1043,6 @@ fn parse_while_statement(
 ) -> Result<Stmt, String> {
     take(tokens);
     let condition = parse_condition(tokens, debug_mode)?;
-    if matches!(peek(tokens), Some(Token::Colon)) {
-        return Err("Python colons are not used in SimBa. Write `while cond { ... }` with braces.".to_string());
-    }
     let body = parse_block(tokens, debug_mode)?;
     Ok(Stmt::While { condition, body })
 }
@@ -659,9 +1062,6 @@ fn parse_for_statement(
     }
     take(tokens);
     let iterable = parse_expression(tokens, debug_mode)?;
-    if matches!(peek(tokens), Some(Token::Colon)) {
-        return Err("Python colons are not used in SimBa. Write `for i in range(n) { ... }` with braces.".to_string());
-    }
     let body = parse_block(tokens, debug_mode)?;
     Ok(Stmt::For {
         variable,

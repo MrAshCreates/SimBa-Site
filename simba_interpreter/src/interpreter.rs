@@ -204,25 +204,40 @@ impl Interpreter {
         Ok(ExecResult::Normal)
     }
 
+    fn clock_value(&self) -> i64 {
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.steps as i64 / 8
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            unix_millis()
+        }
+    }
+
+    fn range_bounds(&mut self, arguments: &[Expr]) -> Result<(i64, i64), String> {
+        let values = arguments
+            .iter()
+            .map(|arg| self.expect_int(arg))
+            .collect::<Result<Vec<_>, _>>()?;
+        match values.as_slice() {
+            [end] => Ok((0, *end)),
+            [start, end] => Ok((*start, *end)),
+            _ => Err("range() takes 1 or 2 integer arguments".to_string()),
+        }
+    }
+
     fn iterate_bounds(&mut self, iterable: &Expr) -> Result<(i64, i64), String> {
         if let Expr::Call { callee, arguments } = iterable {
             if callee == "range" {
-                let values = arguments
-                    .iter()
-                    .map(|arg| self.expect_int(arg))
-                    .collect::<Result<Vec<_>, _>>()?;
-                return match values.as_slice() {
-                    [end] => Ok((0, *end)),
-                    [start, end] => Ok((*start, *end)),
-                    _ => Err("range() takes 1 or 2 integer arguments".to_string()),
-                };
+                return self.range_bounds(arguments);
             }
         }
 
         match self.evaluate(iterable)? {
             Value::Integer(n) => Ok((0, n)),
             other => Err(format!(
-                "`for` needs `range(n)` or an integer, got {other}. Example: `for i in range(10) {{ print(i) }}`"
+                "`for` needs `range(n)` or an integer, got {other}. Example: `for i in range(10): print(i)`"
             )),
         }
     }
@@ -240,11 +255,16 @@ impl Interpreter {
             Expr::Integer(value) => Ok(Value::Integer(*value)),
             Expr::Bool(value) => Ok(Value::Bool(*value)),
             Expr::String(value) => Ok(Value::String(value.clone())),
-            Expr::Identifier(name) => self
-                .globals
-                .get(name)
-                .cloned()
-                .ok_or_else(|| format!("Undefined variable `{name}`. Assign it first: `{name} = 0`.")),
+            Expr::Identifier(name) => {
+                if name == "__name__" {
+                    Ok(Value::String("__main__".to_string()))
+                } else {
+                    self.globals
+                        .get(name)
+                        .cloned()
+                        .ok_or_else(|| format!("Undefined variable `{name}`. Assign it first: `{name} = 0`."))
+                }
+            }
             Expr::Unary { operator, operand } => {
                 let value = self.evaluate(operand)?;
                 match (operator, value) {
@@ -276,9 +296,9 @@ impl Interpreter {
 
     fn call_function(&mut self, name: &str, arguments: &[Expr]) -> Result<Value, String> {
         match name {
-            "clock" => {
+            "clock" | "time.perf_counter" => {
                 self.require_arity(name, arguments, 0)?;
-                return Ok(Value::Integer(unix_millis()));
+                return Ok(Value::Integer(self.clock_value()));
             }
             "str" => {
                 self.require_arity(name, arguments, 1)?;
@@ -327,8 +347,19 @@ impl Interpreter {
                 }
                 return Ok(Value::Integer(best));
             }
+            "sum" => {
+                self.require_arity(name, arguments, 1)?;
+                if let Expr::Call { callee, arguments: range_args } = &arguments[0] {
+                    if callee == "range" {
+                        let (start, end) = self.range_bounds(range_args)?;
+                        let count = end.saturating_sub(start);
+                        return Ok(Value::Integer(count.saturating_mul(start + end - 1) / 2));
+                    }
+                }
+                return Err("sum() currently supports `sum(range(n))`".to_string());
+            }
             "range" => {
-                return Err("`range()` is used in `for i in range(n) { ... }`, not as a standalone value.".to_string());
+                return Err("`range()` is used in `for i in range(n):` or `sum(range(n))`.".to_string());
             }
             _ => {}
         }

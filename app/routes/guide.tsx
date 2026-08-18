@@ -6,11 +6,11 @@ import styles from "./guide.module.css";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "SimBa Programming Guide - Learn Hybrid Python/Rust Development" },
+    { title: "SimBa Programming Guide - Write Python, Embed Python and Rust" },
     {
       name: "description",
       content:
-        "Complete guide to programming in SimBa. Learn how to combine Python's ease-of-use with Rust's performance and safety in our hybrid programming language.",
+        "SimBa writes like Python. Most Python runs as native SimBa. Imports and packages use $python embeds; Rust and crates use $rust embeds. Every snippet here runs in the playground.",
     },
   ];
 }
@@ -27,7 +27,7 @@ export default function Guide() {
             <span className="beta-badge">Beta</span>
           </h1>
           <p className={styles.subtitle}>
-            Learn how to harness the power of Python's simplicity with Rust's performance and safety
+            Write almost exactly like Python. Embed real Python or Rust when you need their ecosystems.
           </p>
         </header>
 
@@ -39,14 +39,20 @@ export default function Guide() {
             </h2>
             <div className={styles.sectionContent}>
               <p>
-                SimBa is a revolutionary hybrid programming language that combines the best of two worlds: Python's
-                intuitive syntax and rapid development capabilities with Rust's blazing performance and memory safety
-                guarantees.
+                SimBa is a host language that writes like Python. Most Python you already know runs as native SimBa —
+                functions, indentation, f-strings, <code className={styles.inlineCode}>if</code>/
+                <code className={styles.inlineCode}>elif</code>/<code className={styles.inlineCode}>else</code>, loops,
+                and optional types. A few safety and typing features (inspired by Rust) change the details slightly so
+                host code is harder to leak or misuse.
               </p>
               <p>
-                Unlike traditional languages that force you to choose between ease-of-use and performance, SimBa allows
-                you to write expressive, readable code that compiles to efficient machine code while preventing common
-                programming errors like null pointer dereferences and buffer overflows.
+                Two things are not native SimBa. Python <code className={styles.inlineCode}>import</code> and packages
+                belong in <code className={styles.inlineCode}>$python</code> ...{" "}
+                <code className={styles.inlineCode}>python$</code>. Rust is never written as SimBa — syntax,{" "}
+                <code className={styles.inlineCode}>fn</code>, <code className={styles.inlineCode}>use</code>, and crates
+                all go in <code className={styles.inlineCode}>$rust</code> ...{" "}
+                <code className={styles.inlineCode}>rust$</code>. Every example on this page is meant to run in the
+                playground.
               </p>
             </div>
           </section>
@@ -58,12 +64,12 @@ export default function Guide() {
             </h2>
             <div className={styles.sectionContent}>
               <p>
-                SimBa uses Python's familiar indentation-based syntax, making it immediately accessible to Python
-                developers while adding static typing for better performance and safety.
+                Write SimBa the way you write Python. Types are optional. Blocks use indentation; braces also work if
+                you prefer them.
               </p>
 
               <div className={styles.codeBlock}>
-                <div className={styles.codeHeader}>basic_syntax.smba</div>
+                <div className={styles.codeHeader}>basic-syntax.smba</div>
                 <pre>{`# Variable declaration with static typing
 name: str = "SimBa"
 age: int = 2024
@@ -90,16 +96,24 @@ if __name__ == "__main__":
     main()`}</pre>
               </div>
 
-              <p>Key syntax features:</p>
+              <p>What is SimBa, and what is not:</p>
               <ul>
-                <li>Indentation-based code blocks (like Python)</li>
-                <li>Static type annotations for variables and functions</li>
+                <li>Indentation-based blocks like Python (braces also work)</li>
+                <li>Optional types on names and functions, including <code className={styles.inlineCode}>-&gt;</code></li>
                 <li>
-                  Familiar keywords: <code className={styles.inlineCode}>def</code>,{" "}
-                  <code className={styles.inlineCode}>if</code>, <code className={styles.inlineCode}>else</code>,{" "}
-                  <code className={styles.inlineCode}>for</code>, <code className={styles.inlineCode}>while</code>
+                  Keywords: <code className={styles.inlineCode}>def</code>,{" "}
+                  <code className={styles.inlineCode}>if</code>, <code className={styles.inlineCode}>elif</code>,{" "}
+                  <code className={styles.inlineCode}>else</code>, <code className={styles.inlineCode}>for</code>,{" "}
+                  <code className={styles.inlineCode}>while</code>
                 </li>
-                <li>F-string formatting for easy string interpolation</li>
+                <li>F-strings, <code className={styles.inlineCode}>True</code>/<code className={styles.inlineCode}>False</code></li>
+                <li>
+                  <code className={styles.inlineCode}>import</code> and Python packages go in{" "}
+                  <code className={styles.inlineCode}>$python</code> embeds
+                </li>
+                <li>
+                  Rust is never written as SimBa. Use <code className={styles.inlineCode}>$rust</code> for Rust and crates
+                </li>
               </ul>
             </div>
           </section>
@@ -112,43 +126,33 @@ if __name__ == "__main__":
               </h2>
               <div className={styles.sectionContent}>
                 <p>
-                  SimBa allows you to seamlessly embed Python code for rapid prototyping and accessing the vast Python
-                  ecosystem.
+                  Most Python is already SimBa. When you need <code className={styles.inlineCode}>import</code>, pip
+                  packages, or CPython-only behavior, wrap it in a <code className={styles.inlineCode}>$python</code>{" "}
+                  block. The playground runs those embeds.
                 </p>
 
                 <div className={styles.codeBlock}>
-                  <div className={styles.codeHeader}>python_integration.smba</div>
-                  <pre>{`# Embed Python code blocks
-python {
-    import numpy as np
-    import matplotlib.pyplot as plt
-    
-    def create_plot(data):
-        plt.plot(data)
-        plt.show()
-        return "Plot created"
-}
+                  <div className={styles.codeHeader}>python-block.smba</div>
+                  <pre>{`print("SimBa is about to run Python")
 
-# Call Python functions from SimBa
-def analyze_data(values: list[float]) -> str:
-    # Convert SimBa data to Python
-    python_result = python.create_plot(values)
-    return python_result
+$python
+print("Hello from embedded Python!")
+print(2 + 2)
 
-# Use Python libraries
-def calculate_stats(numbers: list[float]) -> dict:
-    python {
-        mean = np.mean(numbers)
-        std = np.std(numbers)
-        return {"mean": mean, "std": std}
-    }`}</pre>
+import time
+start = time.perf_counter()
+total = sum(range(1000))
+elapsed = (time.perf_counter() - start) * 1000
+print(f"sum = {total}")
+print(f"python ms = {elapsed:.3f}")
+python$`}</pre>
                 </div>
 
-                <p>Python integration features:</p>
+                <p>Python embeds:</p>
                 <ul>
-                  <li>Direct access to Python libraries</li>
-                  <li>Seamless data type conversion</li>
-                  <li>Runtime Python execution</li>
+                  <li>Use <code className={styles.inlineCode}>$python</code> ... <code className={styles.inlineCode}>python$</code></li>
+                  <li>This is where imports and the Python ecosystem live</li>
+                  <li>Plain SimBa/Python above the embed stays native SimBa</li>
                 </ul>
               </div>
             </section>
@@ -160,46 +164,28 @@ def calculate_stats(numbers: list[float]) -> dict:
               </h2>
               <div className={styles.sectionContent}>
                 <p>
-                  For performance-critical sections, SimBa allows you to embed Rust code that compiles to native machine
-                  code.
+                  Rust cannot appear as SimBa. Put Rust — including <code className={styles.inlineCode}>fn</code>,{" "}
+                  <code className={styles.inlineCode}>use</code>, and crates — inside{" "}
+                  <code className={styles.inlineCode}>$rust</code> ... <code className={styles.inlineCode}>rust$</code>.
                 </p>
 
                 <div className={styles.codeBlock}>
-                  <div className={styles.codeHeader}>rust_integration.smba</div>
-                  <pre>{`# Embed Rust code for performance
-rust {
-    pub extern "C" fn fast_fibonacci(n: u64) -> u64 {
-        match n {
-            0 => 0,
-            1 => 1,
-            _ => fast_fibonacci(n - 1) + fast_fibonacci(n - 2)
-        }
-    }
-    
-    pub extern "C" fn process_array(
-        data: *const f64, 
-        len: usize
-    ) -> f64 {
-        let slice = unsafe { 
-            std::slice::from_raw_parts(data, len) 
-        };
-        slice.iter().sum()
-    }
+                  <div className={styles.codeHeader}>rust-block.smba</div>
+                  <pre>{`print("SimBa is about to run Rust")
+
+$rust
+fn main() {
+    println!("Hello from embedded Rust!");
+    println!("{}", 2 + 2);
 }
-
-# Call Rust functions from SimBa
-def compute_large_fibonacci(n: int) -> int:
-    return rust.fast_fibonacci(n)
-
-def sum_array(numbers: list[float]) -> float:
-    return rust.process_array(numbers)`}</pre>
+rust$`}</pre>
                 </div>
 
-                <p>Rust integration features:</p>
+                <p>Rust embeds:</p>
                 <ul>
-                  <li>Zero-cost abstractions</li>
-                  <li>Memory safety guarantees</li>
-                  <li>Native performance</li>
+                  <li>Required for any Rust syntax or crates</li>
+                  <li>The playground runs the embed; the CLI uses rustc</li>
+                  <li>SimBa itself stays Python-like</li>
                 </ul>
               </div>
             </section>
@@ -208,51 +194,39 @@ def sum_array(numbers: list[float]) -> float:
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>
               <Shield className={styles.sectionIcon} />
-              Memory Safety & Concurrency
+              Types and Safety
             </h2>
             <div className={styles.sectionContent}>
               <p>
-                SimBa adopts Rust's ownership model to prevent memory leaks and data races while maintaining Python's
-                ease of use.
+                SimBa keeps Python-like code, with extra typing and data-safety rules inspired by Rust. You still write
+                SimBa, not Rust. Those rules exist so host programs are less leaky than typical Python. They do not let
+                you drop in Rust syntax or crates — that still requires a <code className={styles.inlineCode}>$rust</code>{" "}
+                embed.
               </p>
 
               <div className={styles.codeBlock}>
-                <div className={styles.codeHeader}>memory_safety.smba</div>
-                <pre>{`# Safe buffer management
-def safe_buffer_example():
-    # SimBa prevents buffer overflows
-    buffer = SafeBuffer::new(10)
-    
-    # Ownership transfer
-    data = vec![1, 2, 3, 4, 5]
-    buffer.extend(data)  # data is moved, not copied
-    
-    return buffer.len()
+                <div className={styles.codeHeader}>types-and-safety.smba</div>
+                <pre>{`# Optional types on names and functions.
+# This is SimBa, not Rust — no fn, no use, no crates.
 
-# Concurrent processing without GIL
-async def concurrent_processing(tasks: list[str]) -> list[str]:
-    results = []
-    
-    # True parallelism (no GIL)
-    for task in tasks.parallel():
-        result = await process_task(task)
-        results.append(result)
-    
-    return results
+def add(a: int, b: int) -> int:
+    return a + b
 
-# Borrowing and references
-def borrow_example(data: &mut list[int]):
-    # Mutable borrow - no data copying
-    data.append(42)
-    data.sort()  # In-place sorting`}</pre>
+count: int = 0
+while count < 3:
+    count = add(count, 1)
+    print(count)
+
+name: str = "SimBa"
+print(f"{name} stays Python-like")`}</pre>
               </div>
 
-              <p>Safety features:</p>
+              <p>What this means in practice:</p>
               <ul>
-                <li>Ownership system prevents memory leaks</li>
-                <li>Borrowing eliminates unnecessary copying</li>
-                <li>No Global Interpreter Lock (GIL) for true parallelism</li>
-                <li>Compile-time prevention of data races</li>
+                <li>Write Python-shaped SimBa for almost everything</li>
+                <li>Add types when they help; they are not required</li>
+                <li>Python packages still go in <code className={styles.inlineCode}>$python</code></li>
+                <li>Rust and its ecosystem only run inside <code className={styles.inlineCode}>$rust</code></li>
               </ul>
             </div>
           </section>
@@ -264,61 +238,87 @@ def borrow_example(data: &mut list[int]):
             </h2>
             <div className={styles.sectionContent}>
               <p>
-                The SimBa Playground provides an interactive environment to experiment with SimBa code, manage files,
-                and see real-time results.
+                The playground editor, examples panel, and console all run the same SimBa that this guide describes.
+                Output (limited) shows program results. Terminal (full) is a command session. Type{" "}
+                <code className={styles.inlineCode}>help</code> or <code className={styles.inlineCode}>guide</code> in
+                the terminal for the live list.
               </p>
 
               <div className={styles.commandList}>
                 <h4>Available Commands:</h4>
                 <ul>
                   <li>
-                    <code>run &lt;filename&gt;</code> - Execute a SimBa file
+                    <code>help [command]</code> — list commands or explain one
                   </li>
                   <li>
-                    <code>exec &lt;code&gt;</code> - Execute SimBa code directly
+                    <code>examples</code> — list built-in programs
                   </li>
                   <li>
-                    <code>ls</code> - List all files in the workspace
+                    <code>open &lt;file|example&gt;</code> — open a saved file, tab, or example
                   </li>
                   <li>
-                    <code>clear</code> - Clear the terminal output
+                    <code>run [file]</code> — compile and run SimBa
                   </li>
                   <li>
-                    <code>help</code> - Show available commands
+                    <code>compile [file]</code> — check syntax without executing
                   </li>
                   <li>
-                    <code>examples</code> - Load example SimBa programs
+                    <code>debug [file]</code> — run with interpreter tracing
+                  </li>
+                  <li>
+                    <code>exec &lt;code&gt;</code> — run inline SimBa
+                  </li>
+                  <li>
+                    <code>ls</code> / <code>tabs</code> — saved files vs open editors
+                  </li>
+                  <li>
+                    <code>new</code> / <code>save</code> / <code>rename</code> / <code>rm</code> — file management
+                  </li>
+                  <li>
+                    <code>mode output|terminal</code> — switch console views
+                  </li>
+                  <li>
+                    <code>theme</code> / <code>accent</code> / <code>settings</code> — appearance
+                  </li>
+                  <li>
+                    <code>clear</code> — clear the console
                   </li>
                 </ul>
               </div>
 
               <div className={styles.codeBlock}>
                 <div className={styles.codeHeader}>Playground Example Session</div>
-                <pre>{`$ exec def greet(): print("Hello, SimBa!")
-$ run hello.smba
-Hello, SimBa!
+                <pre>{`simba> examples
+hello-world.smba
+python-block.smba
+rust-block.smba
+mixed-speed.smba
 
-$ ls
-hello.smba
-fibonacci.smba
-examples/
+simba> open hello-world.smba
+simba> run
+Hello World!
 
-$ examples
-Loaded example files:
-- basic_syntax.smba
-- python_integration.smba
-- rust_performance.smba
+simba> open python-block.smba
+simba> run
+SimBa is about to run Python
+Hello from embedded Python!
+4
+sum = 499500
+python ms = ...
 
-$ run examples/fibonacci.smba
-Fibonacci sequence: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34`}</pre>
+simba> mode terminal
+simba> help run`}</pre>
               </div>
 
               <p>Playground features:</p>
               <ul>
-                <li>Real-time code execution and feedback</li>
-                <li>File management and organization</li>
-                <li>Built-in examples and tutorials</li>
-                <li>Error reporting with helpful suggestions</li>
+                <li>Python-like SimBa in the editor, including types and f-strings</li>
+                <li>
+                  Working <code className={styles.inlineCode}>$python</code> and{" "}
+                  <code className={styles.inlineCode}>$rust</code> embeds
+                </li>
+                <li>Built-in examples that match this guide</li>
+                <li>Parse errors with hints when syntax is off</li>
               </ul>
             </div>
           </section>
@@ -329,58 +329,53 @@ Fibonacci sequence: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34`}</pre>
               Best Practices
             </h2>
             <div className={styles.sectionContent}>
-              <p>Follow these guidelines to write efficient and maintainable SimBa code:</p>
+              <p>Follow these guidelines to write SimBa that also runs in the playground:</p>
 
               <ul>
                 <li>
-                  <strong>Use static typing:</strong> Always specify types for function parameters and return values
+                  <strong>Write Python:</strong> Indentation, <code className={styles.inlineCode}>def</code>,{" "}
+                  <code className={styles.inlineCode}>if</code>/<code className={styles.inlineCode}>elif</code>, loops,
+                  and f-strings are SimBa
                 </li>
                 <li>
-                  <strong>Leverage Python for prototyping:</strong> Use Python blocks for rapid development and library
-                  access
+                  <strong>Use types when they help:</strong>{" "}
+                  <code className={styles.inlineCode}>name: str</code> and{" "}
+                  <code className={styles.inlineCode}>-&gt; int</code> are optional
                 </li>
                 <li>
-                  <strong>Optimize with Rust:</strong> Move performance-critical code to Rust blocks
+                  <strong>Put imports in embeds:</strong> Python packages live in{" "}
+                  <code className={styles.inlineCode}>$python</code> ...{" "}
+                  <code className={styles.inlineCode}>python$</code>
                 </li>
                 <li>
-                  <strong>Embrace ownership:</strong> Use borrowing to avoid unnecessary data copying
+                  <strong>Put Rust in embeds:</strong> Rust syntax and crates live in{" "}
+                  <code className={styles.inlineCode}>$rust</code> ...{" "}
+                  <code className={styles.inlineCode}>rust$</code>
                 </li>
                 <li>
-                  <strong>Handle errors explicitly:</strong> Use Result types for error-prone operations
-                </li>
-                <li>
-                  <strong>Write readable code:</strong> SimBa's syntax encourages clear, expressive programming
-                </li>
-                <li>
-                  <strong>Test thoroughly:</strong> Use the playground to experiment and validate your code
+                  <strong>Stay in the playground:</strong> If a snippet is on this page, it should run there
                 </li>
               </ul>
 
               <div className={styles.codeBlock}>
-                <div className={styles.codeHeader}>best_practices.smba</div>
-                <pre>{`# Good: Clear types and error handling
-def process_file(filename: str) -> Result[str, str]:
-    try:
-        content = read_file(filename)
-        processed = content.upper().strip()
-        return Ok(processed)
-    except FileNotFoundError:
-        return Err(f"File {filename} not found")
+                <div className={styles.codeHeader}>best-practices.smba</div>
+                <pre>{`# Host SimBa — Python-shaped, optional types
+def greet(user: str) -> str:
+    return f"Hello, {user}"
 
-# Good: Efficient data processing
-def analyze_large_dataset(data: &list[float]) -> Statistics:
-    # Use Rust for heavy computation
-    rust {
-        pub extern "C" fn compute_stats(
-            data: *const f64, 
-            len: usize
-        ) -> (f64, f64, f64) {
-            // Fast statistical computation
-        }
-    }
-    
-    mean, median, std = rust.compute_stats(data)
-    return Statistics(mean, median, std)`}</pre>
+print(greet("SimBa"))
+
+# Python ecosystem (imports, pip packages)
+$python
+print("ecosystem code lives here")
+python$
+
+# Rust and crates — never native SimBa
+$rust
+fn main() {
+    println!("native Rust lives here");
+}
+rust$`}</pre>
               </div>
             </div>
           </section>
@@ -389,7 +384,7 @@ def analyze_large_dataset(data: &list[float]) -> Statistics:
         <div className={styles.quickStart}>
           <h2 className={styles.quickStartTitle}>Ready to Start Coding?</h2>
           <p className={styles.quickStartText}>
-            Jump into the SimBa Playground and start experimenting with hybrid Python/Rust programming today!
+            Jump into the playground. Copy any snippet from this guide, or open an example and press Run.
           </p>
           <Link to="/playground" className={styles.quickStartButton}>
             Open Playground

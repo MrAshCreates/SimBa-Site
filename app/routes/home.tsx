@@ -64,18 +64,18 @@ export default function Home() {
                 <span className={styles.codeTitle}>hello.smba</span>
               </div>
               <pre className={styles.codeContent}>
-                {`# SimBa: Python syntax, Rust performance
+                {`# SimBa writes like Python
 def fibonacci(n: int) -> int:
     if n <= 1:
         return n
-
     return fibonacci(n - 1) + fibonacci(n - 2)
 
-# Rust-like memory safety
-let buffer = SafeBuffer::new(10)
-buffer.push(fibonacci(20))
+print(f"Result: {fibonacci(10)}")
 
-print(f"Result: {buffer.get(0)}")`}
+# Python libraries stay in embeds
+$python
+print("hello from Python")
+python$`}
               </pre>
             </div>
           </div>

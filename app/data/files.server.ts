@@ -9,19 +9,17 @@ export interface UserFile {
   updatedAt: Date;
 }
 
-export const DEFAULT_MAIN_SMBA = `# SimBa writes like Python and can embed real Python and Rust.
-def greet(name) {
-    print("Hello, " + name + "! Welcome to SimBa!")
-}
+export const DEFAULT_MAIN_SMBA = `# SimBa writes like Python. Rust and Python libraries go in embeds.
+def greet(name):
+    print(f"Hello, {name}! Welcome to SimBa!")
 
 greet("Developer")
 
 count = 42
 print(count)
 
-if count % 2 == 0 {
+if count % 2 == 0:
     print("even")
-}
 `;
 
 interface FileRow {

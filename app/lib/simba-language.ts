@@ -26,14 +26,31 @@ const TYPE_NAMES = new Set(["int", "i64", "i32", "u64", "str", "bool", "String",
 export function analyzeSimba(code: string): SimbaDiagnostic[] {
   const diagnostics: SimbaDiagnostic[] = [];
   const lines = code.split(/\n/);
+  let embed: "python" | "rust" | null = null;
 
   lines.forEach((line, index) => {
     const lineNumber = index + 1;
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("//")) {
+    if (trimmed.startsWith("$python")) {
+      embed = "python";
       return;
     }
-    if (trimmed.startsWith("$python") || trimmed.startsWith("$rust") || trimmed.endsWith("python$") || trimmed.endsWith("rust$")) {
+    if (trimmed.startsWith("$rust")) {
+      embed = "rust";
+      return;
+    }
+    if (embed === "python" && trimmed.endsWith("python$")) {
+      embed = null;
+      return;
+    }
+    if (embed === "rust" && trimmed.endsWith("rust$")) {
+      embed = null;
+      return;
+    }
+    if (embed) {
+      return;
+    }
+    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("//")) {
       return;
     }
 
@@ -58,23 +75,13 @@ export function analyzeSimba(code: string): SimbaDiagnostic[] {
       });
     }
 
-    if (/^(if|elif|else if|while|for)\b.*:\s*$/.test(trimmed) || /:\s*(#.*)?$/.test(trimmed) && /^(if|elif|while|for|def|else)\b/.test(trimmed)) {
-      diagnostics.push({
-        line: lineNumber,
-        column: Math.max(1, line.lastIndexOf(":") + 1),
-        endColumn: line.lastIndexOf(":") + 2,
-        severity: "error",
-        message: "Python colons are not used in SimBa. Use braces: `if cond { ... }`.",
-      });
-    }
-
     if (/^fn\s+/.test(trimmed)) {
       diagnostics.push({
         line: lineNumber,
         column: 1,
         endColumn: 3,
         severity: "error",
-        message: "Rust `fn` is only valid inside `$rust` ... `rust$`. In SimBa write `def name() { ... }`.",
+        message: "Rust `fn` is only valid inside `$rust` ... `rust$`. In SimBa write `def name():`.",
       });
     }
 
@@ -98,7 +105,7 @@ export function analyzeSimba(code: string): SimbaDiagnostic[] {
       column: 1,
       endColumn: (lines[lines.length - 1] || "").length + 1,
       severity: "error",
-      message: `Unbalanced braces: ${openBraces} \`{\` and ${closeBraces} \`}\`. Every if/while/for/def block needs matching braces.`,
+      message: `Unbalanced braces: ${openBraces} \`{\` and ${closeBraces} \`}\`. If you use braces, every block needs a matching pair. Indentation-based blocks do not need braces.`,
     });
   }
 
@@ -108,12 +115,12 @@ export function analyzeSimba(code: string): SimbaDiagnostic[] {
 export function simbaCompletions(lineUntilCursor: string): SimbaCompletion[] {
   const items: SimbaCompletion[] = [
     { label: "print", kind: "function", detail: "Print a value", insertText: "print($1)" },
-    { label: "def", kind: "snippet", detail: "Define a function", insertText: "def ${1:name}(${2:args}) {\n    $0\n}" },
-    { label: "if", kind: "snippet", detail: "If block", insertText: "if ${1:condition} {\n    $0\n}" },
-    { label: "elif", kind: "keyword", detail: "Else-if branch", insertText: "elif ${1:condition} {\n    $0\n}" },
-    { label: "else", kind: "snippet", detail: "Else block", insertText: "else {\n    $0\n}" },
-    { label: "while", kind: "snippet", detail: "While loop", insertText: "while ${1:condition} {\n    $0\n}" },
-    { label: "for", kind: "snippet", detail: "For range loop", insertText: "for ${1:i} in range(${2:10}) {\n    $0\n}" },
+    { label: "def", kind: "snippet", detail: "Define a function", insertText: "def ${1:name}(${2:args}):\n    $0" },
+    { label: "if", kind: "snippet", detail: "If block", insertText: "if ${1:condition}:\n    $0" },
+    { label: "elif", kind: "keyword", detail: "Else-if branch", insertText: "elif ${1:condition}:\n    $0" },
+    { label: "else", kind: "snippet", detail: "Else block", insertText: "else:\n    $0" },
+    { label: "while", kind: "snippet", detail: "While loop", insertText: "while ${1:condition}:\n    $0" },
+    { label: "for", kind: "snippet", detail: "For range loop", insertText: "for ${1:i} in range(${2:10}):\n    $0" },
     { label: "return", kind: "keyword", detail: "Return a value", insertText: "return ${1:0}" },
     { label: "let", kind: "snippet", detail: "Rust-style integer", insertText: "let ${1:count}: int = ${2:0}" },
     { label: "int assignment", kind: "snippet", detail: ASSIGNMENT_HELP.simba, insertText: "${1:count}: int = ${2:0}" },
@@ -143,10 +150,10 @@ export function simbaCompletions(lineUntilCursor: string): SimbaCompletion[] {
 export function hoverHelp(word: string): string | null {
   const docs: Record<string, string> = {
     print: "print(value)\nWrite a value to output.",
-    def: "def name(args) { ... }\nDefine a function. SimBa uses braces, not indentation.",
+    def: "def name(args):\n    ...\nDefine a function. SimBa uses Python indentation. Braces `{ }` also work.",
     let: `Rust-style binding.\nSimBa: ${ASSIGNMENT_HELP.simba}\nPython: ${ASSIGNMENT_HELP.python}\nRust: ${ASSIGNMENT_HELP.rust}`,
     int: "Integer type or converter.\nAssign with `count: int = 5` or convert with int(value).",
-    range: "for i in range(n) { ... }\nor range(start, end). Exclusive end, like Python.",
+    range: "for i in range(n):\n    ...\nor range(start, end). Exclusive end, like Python.",
     clock: "clock() -> int milliseconds since epoch. Use for timing.",
     True: "Boolean true. Also accepted: true",
     False: "Boolean false. Also accepted: false",
