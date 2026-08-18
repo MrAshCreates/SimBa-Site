@@ -1,18 +1,25 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import classNames from "classnames";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { useColorScheme } from "@dazl/color-scheme/react";
 import type { Route } from "./+types/playground";
 import { Navigation } from "~/components/navigation/navigation";
 import { CodeEditor } from "~/components/code-editor/code-editor";
-import { TerminalConsole, type TerminalMode } from "~/components/terminal-console/terminal-console";
-import type { OutputLine, OutputStatus } from "~/components/output-console/output-console";
+import { TerminalConsole } from "~/components/terminal-console/terminal-console";
+import type { ConsoleSource, OutputLine, OutputStatus, OutputType } from "~/components/output-console/output-console";
 import { ActionPanel } from "~/components/action-panel/action-panel";
 import { Sidebar } from "~/components/sidebar/sidebar";
 import type { FileNode } from "~/components/file-explorer/file-explorer";
 import { useAuth } from "~/hooks/use-auth";
 import { useUserSettings } from "~/hooks/use-user-settings";
-import { exampleFileName, findExampleByFilename, SIMBA_EXAMPLES, type SimBaExample } from "~/data/examples";
+import { exampleFileName, SIMBA_EXAMPLES, type SimBaExample } from "~/data/examples";
+import {
+  createConsoleLine,
+  executePlaygroundCommand,
+  SETTABLE_PATHS,
+  type TerminalMode,
+} from "~/lib/playground-commands";
 import type { Project } from "~/data/auth";
 import {
   PanelLeftClose,
@@ -79,15 +86,17 @@ function parseProject(value: unknown): Project | null {
 
 export default function Playground() {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { settings } = useUserSettings();
+  const { settings, updateSettings } = useUserSettings();
+  const { setColorScheme } = useColorScheme();
   const navigate = useNavigate();
+  const welcomedRef = useRef(false);
 
   // Editor state
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [status, setStatus] = useState<OutputStatus>("ready");
-  const [consoleMode, setConsoleMode] = useState<TerminalMode>("output");
+  const [consoleMode, setConsoleMode] = useState<TerminalMode>(settings.playground?.defaultConsoleMode || "output");
   const [compiledSource, setCompiledSource] = useState<string | null>(null);
 
   // Project state
@@ -96,9 +105,9 @@ export default function Playground() {
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
 
   // Panel visibility state
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [showConsole, setShowConsole] = useState(true);
-  const [showActions, setShowActions] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(settings.playground?.showSidebar !== false);
+  const [showConsole, setShowConsole] = useState(settings.playground?.showConsole !== false);
+  const [showActions, setShowActions] = useState(settings.playground?.showExamples !== false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const fileTree: FileNode[] = projects.map((file) => ({
@@ -205,19 +214,24 @@ export default function Playground() {
     return () => window.clearTimeout(timer);
   }, [openFiles, activeFileId, persistFile, settings.general?.autoSave, settings.editor?.autoSaveDelay]);
 
-  const addOutput = useCallback((type: "success" | "error" | "info" | "program", content: string) => {
-    const newLine: OutputLine = {
-      id: Date.now().toString(),
-      type,
-      content,
-      timestamp: new Date(),
-    };
-    setOutput((prev) => [...prev, newLine]);
-  }, []);
+  const addOutput = useCallback(
+    (type: OutputType, content: string, source: ConsoleSource = "session") => {
+      const limit = Math.max(100, settings.terminal?.scrollbackLimit || 1000);
+      setOutput((prev) => {
+        const next = [...prev, createConsoleLine(type, content, source)];
+        return next.length > limit ? next.slice(next.length - limit) : next;
+      });
+    },
+    [settings.terminal?.scrollbackLimit],
+  );
 
   const clearOutput = useCallback(() => {
     setOutput([]);
     setStatus("ready");
+  }, []);
+
+  const clearRunOutput = useCallback(() => {
+    setOutput((prev) => prev.filter((line) => line.source !== "run"));
   }, []);
 
   const getActiveFile = () => {
@@ -232,16 +246,17 @@ export default function Playground() {
 
   const executeCode = useCallback(
     async (mode: "compile" | "run" | "debug" = "run", source?: string) => {
+      const addRunOutput = (type: OutputType, content: string) => addOutput(type, content, "run");
       const activeFile = getActiveFile();
       const code = source ?? activeFile?.content ?? "";
       if (!code.trim()) {
-        addOutput("error", "No active file or file is empty, nothing to run.");
+        addRunOutput("error", "No active file or file is empty, nothing to run.");
         return false;
       }
 
       setStatus("running");
       if (settings.terminal?.clearOnRun !== false) {
-        clearOutput();
+        clearRunOutput();
       }
 
       const runRequest = async (requestMode: "compile" | "run" | "debug") => {
@@ -260,34 +275,34 @@ export default function Playground() {
       const printResult = (result: ExecutionResult, label: string) => {
         if (result.stderr) {
           result.stderr.split("\n").forEach((line) => {
-            if (line.trim()) addOutput("error", line);
+            if (line.trim()) addRunOutput("error", line);
           });
         }
         const text = result.output || result.stdout || "";
         if (text.trim()) {
-          addOutput("info", `\n=== ${label} ===`);
+          addRunOutput("info", `=== ${label} ===`);
           text.split("\n").forEach((line) => {
             if (!line.trim()) return;
             if (line.startsWith("[debug]")) {
-              addOutput("info", line);
+              addRunOutput("info", line);
             } else {
-              addOutput(line.toLowerCase().includes("error") ? "error" : "program", line);
+              addRunOutput(line.toLowerCase().includes("error") ? "error" : "program", line);
             }
           });
         }
       };
 
       try {
-        addOutput("info", "=== SimBa Compile ===");
+        addRunOutput("info", "=== SimBa Compile ===");
         const compiled = await runRequest("compile");
         printResult(compiled, "Compiler");
         if (compiled.status !== "success") {
-          addOutput("error", "Compile failed. Fix the errors above before running.");
+          addRunOutput("error", "Compile failed. Fix the errors above before running.");
           setStatus("error");
           setCompiledSource(null);
           return false;
         }
-        addOutput("success", "Compile succeeded.");
+        addRunOutput("success", "Compile succeeded.");
         setCompiledSource(code);
 
         if (mode === "compile") {
@@ -295,18 +310,18 @@ export default function Playground() {
           return true;
         }
 
-        addOutput("info", mode === "debug" ? "=== SimBa Debug ===" : "=== SimBa Execution ===");
+        addRunOutput("info", mode === "debug" ? "=== SimBa Debug ===" : "=== SimBa Execution ===");
         const executed = await runRequest(mode);
         printResult(executed, mode === "debug" ? "Debug output" : "Program output");
         if (executed.status === "success") {
-          addOutput("success", mode === "debug" ? "Debug run finished." : "Execution completed successfully.");
+          addRunOutput("success", mode === "debug" ? "Debug run finished." : "Execution completed successfully.");
           setStatus("success");
           return true;
         }
         setStatus("error");
         return false;
       } catch (error) {
-        addOutput(
+        addRunOutput(
           "error",
           `Network error: ${error instanceof Error ? error.message : "Failed to connect to execution server"}`,
         );
@@ -314,54 +329,7 @@ export default function Playground() {
         return false;
       }
     },
-    [openFiles, activeFileId, addOutput, clearOutput, settings.terminal?.clearOnRun],
-  );
-
-  const handleTerminalCommand = useCallback(
-    async (command: string) => {
-      const args = command.trim().split(/\s+/);
-      const cmd = args[0]?.toLowerCase();
-      const filename = args[1];
-
-      const loadExampleCode = (name: string) => {
-        const example = findExampleByFilename(name);
-        if (!example) return null;
-        handleLoadExample(example);
-        return example.code;
-      };
-
-      if (cmd === "run" || cmd === "compile" || cmd === "debug") {
-        const mode = cmd;
-        if (filename) {
-          const exampleCode = loadExampleCode(filename);
-          if (!exampleCode) {
-            const open = openFiles.find(
-              (file) => file.name.toLowerCase() === filename.toLowerCase() || file.path.toLowerCase().endsWith(filename.toLowerCase()),
-            );
-            if (!open) {
-              addOutput("error", `File not found: ${filename}. Try \`ls\` or pick a program from the Examples sidebar.`);
-              return;
-            }
-            await executeCode(mode, open.content);
-            return;
-          }
-          await executeCode(mode, exampleCode);
-          return;
-        }
-        await executeCode(mode);
-        return;
-      }
-
-      if (cmd === "exec") {
-        const code = args.slice(1).join(" ");
-        if (!code.trim()) {
-          addOutput("error", "Usage: exec <code>");
-          return;
-        }
-        await executeCode("run", code);
-      }
-    },
-    [addOutput, executeCode, openFiles],
+    [openFiles, activeFileId, addOutput, clearRunOutput, settings.terminal?.clearOnRun],
   );
 
   const handleRun = useCallback(() => {
@@ -378,13 +346,11 @@ export default function Playground() {
 
   const handleLoadExample = useCallback(
     (example: SimBaExample) => {
-      // Check if example is already open
       const existingExample = openFiles.find(
         (file) => file.isExample && (file.name === exampleFileName(example) || file.id.startsWith(`example-${example.id}`)),
       );
 
       if (existingExample) {
-        // Just switch to the existing tab
         setActiveFileId(existingExample.id);
         addOutput("info", `Switched to example: ${example.title}`);
         return;
@@ -402,11 +368,10 @@ export default function Playground() {
 
       setOpenFiles((prev) => [...prev, newFile]);
       setActiveFileId(newFile.id);
-      clearOutput();
       addOutput("info", `Loaded example: ${example.title}`);
       addOutput("info", example.description);
     },
-    [openFiles, clearOutput, addOutput],
+    [openFiles, addOutput],
   );
 
   const openSavedFile = useCallback(
@@ -577,13 +542,107 @@ export default function Playground() {
     setActiveFileId(file.id);
   };
 
-  const handleCloseFile = (fileId: string) => {
-    setOpenFiles((prev) => prev.filter((file) => file.id !== fileId));
-    if (activeFileId === fileId) {
-      const remainingFiles = openFiles.filter((file) => file.id !== fileId);
-      setActiveFileId(remainingFiles.length > 0 ? remainingFiles[0].id : null);
+  const handleCloseFile = useCallback((fileId: string) => {
+    setOpenFiles((prev) => {
+      const next = prev.filter((file) => file.id !== fileId);
+      setActiveFileId((current) => (current === fileId ? (next[0]?.id ?? null) : current));
+      return next;
+    });
+  }, []);
+
+  const handleTerminalCommand = useCallback(
+    async (command: string, meta: { history: string[] }) => {
+      addOutput("command", `simba> ${command}`, "session");
+      await executePlaygroundCommand(
+        command,
+        {
+          print: addOutput,
+          clear: clearOutput,
+          getActiveFile,
+          openFiles,
+          projects,
+          examples: SIMBA_EXAMPLES,
+          userName: user?.username,
+          userEmail: user?.email,
+          settings,
+          consoleMode,
+          showSidebar,
+          showConsole,
+          showExamples: showActions,
+          isFullscreen,
+          executeCode,
+          loadExample: handleLoadExample,
+          openSavedFile,
+          focusFile: setActiveFileId,
+          closeFile: handleCloseFile,
+          createFile: handleCreateFile,
+          saveFile: handleSaveProject,
+          renameFile: handleRenameFile,
+          deleteFile: handleDeleteFile,
+          exportFile: handleExportFile,
+          setConsoleMode,
+          setShowSidebar,
+          setShowConsole,
+          setShowExamples: setShowActions,
+          setFullscreen: setIsFullscreen,
+          setColorScheme,
+          updateSettings,
+          navigate,
+        },
+        meta,
+      );
+    },
+    [
+      addOutput,
+      clearOutput,
+      openFiles,
+      activeFileId,
+      projects,
+      user?.username,
+      user?.email,
+      settings,
+      consoleMode,
+      showSidebar,
+      showConsole,
+      showActions,
+      isFullscreen,
+      executeCode,
+      handleLoadExample,
+      openSavedFile,
+      handleCloseFile,
+      handleCreateFile,
+      handleSaveProject,
+      handleRenameFile,
+      handleDeleteFile,
+      handleExportFile,
+      setColorScheme,
+      updateSettings,
+      navigate,
+    ],
+  );
+
+  useEffect(() => {
+    if (consoleMode !== "terminal" || welcomedRef.current) {
+      return;
     }
-  };
+    welcomedRef.current = true;
+    setOutput((prev) => {
+      if (prev.some((line) => line.id === "terminal-welcome")) {
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          ...createConsoleLine(
+            "info",
+            "Welcome to SimBa Terminal (full mode). Type `help` or `guide`.",
+            "session",
+          ),
+          id: "terminal-welcome",
+        },
+      ];
+    });
+  }, [consoleMode]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
@@ -611,7 +670,7 @@ export default function Playground() {
   const activeFile = getActiveFile();
 
   return (
-    <div className={styles.container}>
+    <div className={classNames(styles.container, settings.appearance?.density === "compact" && styles.compact)}>
       <Navigation />
 
       {/* Toolbar */}
@@ -814,10 +873,35 @@ export default function Playground() {
                         status={status}
                         output={output}
                         mode={consoleMode}
-                        onClear={clearOutput}
+                        onClear={() => {
+                          if (consoleMode === "output") {
+                            clearRunOutput();
+                            setStatus("ready");
+                          } else {
+                            clearOutput();
+                          }
+                        }}
                         onModeChange={setConsoleMode}
                         onExecuteCommand={handleTerminalCommand}
-                        exampleFiles={SIMBA_EXAMPLES.map(exampleFileName)}
+                        completions={[
+                          ...openFiles.map((file) => file.name),
+                          ...projects.map((file) => file.name),
+                          ...SIMBA_EXAMPLES.map(exampleFileName),
+                          ...Object.keys(SETTABLE_PATHS),
+                          "output",
+                          "terminal",
+                          "dark",
+                          "light",
+                          "system",
+                          "violet",
+                          "ocean",
+                          "ember",
+                          "forest",
+                          "slate",
+                          "on",
+                          "off",
+                          "toggle",
+                        ]}
                         title="Console"
                       />
                     </div>
@@ -833,7 +917,11 @@ export default function Playground() {
             <>
               <PanelResizeHandle className={styles.resizer} />
               <Panel defaultSize={25} minSize={20} maxSize={40} className={styles.actionContainer}>
-                <ActionPanel onLoadExample={handleLoadExample} examples={SIMBA_EXAMPLES} />
+                <ActionPanel
+                  onLoadExample={handleLoadExample}
+                  examples={SIMBA_EXAMPLES}
+                  onClose={() => setShowActions(false)}
+                />
               </Panel>
             </>
           )}
@@ -853,9 +941,12 @@ export default function Playground() {
         </div>
         <div className={styles.statusRight}>
           <div className={styles.statusItem}>
+            {consoleMode === "terminal" ? "Terminal · full" : "Output · limited"}
+          </div>
+          <div className={styles.statusItem}>
             {openFiles.length} file{openFiles.length !== 1 ? "s" : ""} open
           </div>
-          <div className={styles.statusItem}>Ready</div>
+          <div className={styles.statusItem}>{status === "ready" ? "Ready" : status}</div>
         </div>
       </div>
     </div>

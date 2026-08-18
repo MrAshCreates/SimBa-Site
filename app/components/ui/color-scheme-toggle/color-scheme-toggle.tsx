@@ -1,5 +1,6 @@
 import { Sun, Moon, Monitor } from "lucide-react";
 import { useColorScheme } from "@dazl/color-scheme/react";
+import { useUserSettings, type ColorSchemePreference } from "~/hooks/use-user-settings";
 import { Button } from "~/components/ui/button/button";
 import {
   DropdownMenu,
@@ -30,7 +31,13 @@ const ICON_LABEL = {
 
 export function ColorSchemeToggle({ triggerText = false, optionText = true }: ColorSchemeToggleProps) {
   const { configScheme, resolvedScheme, setColorScheme } = useColorScheme();
+  const { updateSettings } = useUserSettings();
   const { icon, label } = ICON_LABEL[resolvedScheme];
+
+  const chooseScheme = (scheme: ColorSchemePreference) => {
+    setColorScheme(scheme);
+    updateSettings("appearance", "colorScheme", scheme);
+  };
 
   return (
     <DropdownMenu>
@@ -42,7 +49,7 @@ export function ColorSchemeToggle({ triggerText = false, optionText = true }: Co
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          onClick={() => setColorScheme("light")}
+          onClick={() => chooseScheme("light")}
           className={style.option}
           data-selected={configScheme === "light"}
         >
@@ -50,7 +57,7 @@ export function ColorSchemeToggle({ triggerText = false, optionText = true }: Co
           {optionText && ICON_LABEL.light.label}
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => setColorScheme("dark")}
+          onClick={() => chooseScheme("dark")}
           className={style.option}
           data-selected={configScheme === "dark"}
         >
@@ -58,7 +65,7 @@ export function ColorSchemeToggle({ triggerText = false, optionText = true }: Co
           {optionText && ICON_LABEL.dark.label}
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => setColorScheme("system")}
+          onClick={() => chooseScheme("system")}
           className={style.option}
           data-selected={configScheme === "system"}
         >

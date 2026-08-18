@@ -1,10 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { CheckCircle } from "lucide-react";
+import { useColorScheme } from "@dazl/color-scheme/react";
 import type { Route } from "./+types/settings";
 import { Navigation } from "~/components/navigation/navigation";
 import { useAuth } from "~/hooks/use-auth";
-import { useUserSettings, type UserSettings } from "~/hooks/use-user-settings";
+import {
+  useUserSettings,
+  type AccentStyle,
+  type ColorSchemePreference,
+  type DensityPreference,
+  type SiteStyle,
+  type UserSettings,
+} from "~/hooks/use-user-settings";
 import type { User } from "~/data/auth";
 import styles from "./settings.module.css";
 
@@ -21,7 +29,8 @@ export function meta({}: Route.MetaArgs) {
 export default function Settings() {
   const { user, isAuthenticated, isLoading, login } = useAuth();
   const navigate = useNavigate();
-  const { settings, updateSettings, updateNotificationSetting } = useUserSettings();
+  const { settings, updateSettings, updateNotificationSetting, resetSettings } = useUserSettings();
+  const { setColorScheme } = useColorScheme();
   const [showSaveMessage, setShowSaveMessage] = useState(false);
 
   // User profile state
@@ -121,6 +130,78 @@ export default function Settings() {
         </div>
 
         <div className={styles.settingsGrid}>
+          {/* Appearance */}
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Appearance</h2>
+              <p className={styles.sectionDescription}>
+                Change the look of the website and playground. These apply immediately.
+              </p>
+            </div>
+
+            <div className={styles.settingsForm}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Color scheme</label>
+                <p className={styles.description}>Light, dark, or follow your system setting</p>
+                <select
+                  className={styles.select}
+                  value={settings.appearance?.colorScheme || "system"}
+                  onChange={(e) => {
+                    const value = e.target.value as ColorSchemePreference;
+                    setColorScheme(value);
+                    handleSettingChange("appearance", "colorScheme", value);
+                  }}
+                >
+                  <option value="system">System</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Accent</label>
+                <p className={styles.description}>Brand color used for buttons, tabs, and highlights</p>
+                <select
+                  className={styles.select}
+                  value={settings.appearance?.accent || "violet"}
+                  onChange={(e) => handleSettingChange("appearance", "accent", e.target.value as AccentStyle)}
+                >
+                  <option value="violet">Violet</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="ember">Ember</option>
+                  <option value="forest">Forest</option>
+                  <option value="slate">Slate</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Site style</label>
+                <p className={styles.description}>Default is soft. High contrast strengthens borders and text</p>
+                <select
+                  className={styles.select}
+                  value={settings.appearance?.siteStyle || "default"}
+                  onChange={(e) => handleSettingChange("appearance", "siteStyle", e.target.value as SiteStyle)}
+                >
+                  <option value="default">Default</option>
+                  <option value="high-contrast">High contrast</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Density</label>
+                <p className={styles.description}>Comfortable is roomier. Compact tightens the playground chrome</p>
+                <select
+                  className={styles.select}
+                  value={settings.appearance?.density || "comfortable"}
+                  onChange={(e) => handleSettingChange("appearance", "density", e.target.value as DensityPreference)}
+                >
+                  <option value="comfortable">Comfortable</option>
+                  <option value="compact">Compact</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
           {/* User Profile Section */}
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
@@ -189,7 +270,7 @@ export default function Settings() {
             <div className={styles.settingsForm}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Theme</label>
-                <p className={styles.description}>Choose the visual theme for the code editor</p>
+                <p className={styles.description}>Editor colors only. Site light/dark is under Appearance</p>
                 <select
                   className={styles.select}
                   value={settings.editor?.theme || "vs-dark"}
@@ -428,6 +509,80 @@ Execution completed successfully`}
             </div>
           </section>
 
+          {/* Playground layout */}
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Playground Layout</h2>
+              <p className={styles.sectionDescription}>
+                Defaults used when the playground loads. You can still change panels from the toolbar or terminal.
+              </p>
+            </div>
+
+            <div className={styles.settingsForm}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Default console mode</label>
+                <p className={styles.description}>
+                  Output is results-only. Terminal is a full command session for navigating the playground.
+                </p>
+                <select
+                  className={styles.select}
+                  value={settings.playground?.defaultConsoleMode || "output"}
+                  onChange={(e) =>
+                    handleSettingChange("playground", "defaultConsoleMode", e.target.value as "output" | "terminal")
+                  }
+                >
+                  <option value="output">Output (limited)</option>
+                  <option value="terminal">Terminal (full)</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <div className={styles.toggleGroup}>
+                  <button
+                    className={`${styles.toggle} ${settings.playground?.showSidebar !== false ? styles.active : ""}`}
+                    onClick={() => handleToggle("playground", "showSidebar")}
+                  >
+                    <div className={styles.toggleSlider}></div>
+                  </button>
+                  <div>
+                    <div className={styles.toggleLabel}>Show files sidebar</div>
+                    <p className={styles.description}>Open the file list when the playground loads</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <div className={styles.toggleGroup}>
+                  <button
+                    className={`${styles.toggle} ${settings.playground?.showConsole !== false ? styles.active : ""}`}
+                    onClick={() => handleToggle("playground", "showConsole")}
+                  >
+                    <div className={styles.toggleSlider}></div>
+                  </button>
+                  <div>
+                    <div className={styles.toggleLabel}>Show console</div>
+                    <p className={styles.description}>Open Output / Terminal when the playground loads</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <div className={styles.toggleGroup}>
+                  <button
+                    className={`${styles.toggle} ${settings.playground?.showExamples !== false ? styles.active : ""}`}
+                    onClick={() => handleToggle("playground", "showExamples")}
+                  >
+                    <div className={styles.toggleSlider}></div>
+                  </button>
+                  <div>
+                    <div className={styles.toggleLabel}>Show examples panel</div>
+                    <p className={styles.description}>Open the examples panel when the playground loads</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* General Settings */}
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
@@ -531,6 +686,19 @@ Execution completed successfully`}
                   </div>
                 </div>
               </div>
+
+              <button
+                className={styles.saveButton}
+                onClick={() => {
+                  if (window.confirm("Reset all playground and appearance settings to defaults?")) {
+                    resetSettings();
+                    setColorScheme("system");
+                    showSaveConfirmation();
+                  }
+                }}
+              >
+                Reset all settings
+              </button>
             </div>
           </section>
         </div>

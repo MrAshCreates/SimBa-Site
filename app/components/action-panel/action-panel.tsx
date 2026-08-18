@@ -1,6 +1,5 @@
-import { useState } from "react";
-import classNames from "classnames";
 import { FileText, X } from "lucide-react";
+import classNames from "classnames";
 import type { SimBaExample } from "~/data/examples";
 import styles from "./action-panel.module.css";
 
@@ -16,29 +15,17 @@ interface ActionPanelProps {
    */
   examples: SimBaExample[];
   /**
+   * Hide the examples panel, matching the toolbar toggle
+   * @important
+   */
+  onClose: () => void;
+  /**
    * Additional CSS class name
    */
   className?: string;
 }
 
-export function ActionPanel({ onLoadExample, examples, className }: ActionPanelProps) {
-  const [isExamplesOpen, setIsExamplesOpen] = useState(true);
-
-  const handleExampleSelect = (example: SimBaExample) => {
-    onLoadExample(example);
-  };
-
-  if (!isExamplesOpen) {
-    return (
-      <div className={classNames(styles.container, styles.collapsed, className)}>
-        <button className={styles.expandButton} onClick={() => setIsExamplesOpen(true)} title="Show Examples">
-          <FileText size={16} />
-          Examples
-        </button>
-      </div>
-    );
-  }
-
+export function ActionPanel({ onLoadExample, examples, onClose, className }: ActionPanelProps) {
   return (
     <div className={classNames(styles.container, className)}>
       <div className={styles.header}>
@@ -46,7 +33,7 @@ export function ActionPanel({ onLoadExample, examples, className }: ActionPanelP
           <FileText className={styles.headerIcon} size={16} />
           Examples
         </div>
-        <button className={styles.closeButton} onClick={() => setIsExamplesOpen(false)} title="Close Examples Panel">
+        <button className={styles.closeButton} onClick={onClose} title="Close Examples Panel">
           <X size={14} />
         </button>
       </div>
@@ -55,7 +42,7 @@ export function ActionPanel({ onLoadExample, examples, className }: ActionPanelP
         <p className={styles.description}>Load SimBa examples to explore language features and best practices.</p>
         <div className={styles.exampleGrid}>
           {examples.map((example) => (
-            <button key={example.id} className={styles.exampleButton} onClick={() => handleExampleSelect(example)}>
+            <button key={example.id} className={styles.exampleButton} onClick={() => onLoadExample(example)}>
               <h5 className={styles.exampleTitle}>{example.title}</h5>
               <p className={styles.exampleDescription}>{example.description}</p>
             </button>

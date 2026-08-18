@@ -15,7 +15,10 @@ import "./styles/tokens/sizes.css";
 import "./styles/tokens/spacings.css";
 import "./styles/tokens/typography.css";
 import "./styles/theme.css";
+import "./styles/appearance.css";
 import { useColorScheme } from "@dazl/color-scheme/react";
+import { UserSettingsProvider } from "./hooks/use-user-settings";
+import { AppearanceSync } from "./components/appearance-sync/appearance-sync";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -59,7 +62,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <UserSettingsProvider>
+            <AppearanceSync />
+            {children}
+          </UserSettingsProvider>
+        </AuthProvider>
         <MobileBlockOverlay />
         <Toaster />
         <ScrollRestoration />

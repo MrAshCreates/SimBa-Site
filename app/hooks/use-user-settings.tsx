@@ -1,4 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+
+export type ColorSchemePreference = "system" | "light" | "dark";
+export type AccentStyle = "violet" | "ocean" | "ember" | "forest" | "slate";
+export type DensityPreference = "comfortable" | "compact";
+export type SiteStyle = "default" | "high-contrast";
+export type ConsoleModeSetting = "output" | "terminal";
 
 export interface UserSettings {
   editor: {
@@ -28,9 +34,21 @@ export interface UserSettings {
       newFeatures: boolean;
     };
   };
+  appearance: {
+    colorScheme: ColorSchemePreference;
+    accent: AccentStyle;
+    density: DensityPreference;
+    siteStyle: SiteStyle;
+  };
+  playground: {
+    defaultConsoleMode: ConsoleModeSetting;
+    showSidebar: boolean;
+    showConsole: boolean;
+    showExamples: boolean;
+  };
 }
 
-const DEFAULT_SETTINGS: UserSettings = {
+export const DEFAULT_SETTINGS: UserSettings = {
   editor: {
     theme: "vs-dark",
     fontSize: 14,
@@ -58,50 +76,90 @@ const DEFAULT_SETTINGS: UserSettings = {
       newFeatures: true,
     },
   },
+  appearance: {
+    colorScheme: "system",
+    accent: "violet",
+    density: "comfortable",
+    siteStyle: "default",
+  },
+  playground: {
+    defaultConsoleMode: "output",
+    showSidebar: true,
+    showConsole: true,
+    showExamples: true,
+  },
 };
 
 const STORAGE_KEY = "simba-user-settings";
 
-export function useUserSettings() {
-  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+function mergeSettings(parsed: Partial<UserSettings> | null | undefined): UserSettings {
+  return {
+    editor: { ...DEFAULT_SETTINGS.editor, ...parsed?.editor },
+    terminal: { ...DEFAULT_SETTINGS.terminal, ...parsed?.terminal },
+    general: {
+      ...DEFAULT_SETTINGS.general,
+      ...parsed?.general,
+      notifications: {
+        ...DEFAULT_SETTINGS.general.notifications,
+        ...parsed?.general?.notifications,
+      },
+    },
+    appearance: { ...DEFAULT_SETTINGS.appearance, ...parsed?.appearance },
+    playground: { ...DEFAULT_SETTINGS.playground, ...parsed?.playground },
+  };
+}
 
-  // Load settings from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsedSettings = JSON.parse(stored);
-        // Merge with defaults to ensure all properties exist
-        setSettings({
-          editor: { ...DEFAULT_SETTINGS.editor, ...parsedSettings.editor },
-          terminal: { ...DEFAULT_SETTINGS.terminal, ...parsedSettings.terminal },
-          general: {
-            ...DEFAULT_SETTINGS.general,
-            ...parsedSettings.general,
-            notifications: {
-              ...DEFAULT_SETTINGS.general.notifications,
-              ...parsedSettings.general?.notifications,
-            },
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Failed to load user settings:", error);
-      // Reset to defaults if corrupted
-      localStorage.removeItem(STORAGE_KEY);
+export function readStoredSettings(): UserSettings {
+  if (typeof window === "undefined") {
+    return DEFAULT_SETTINGS;
+  }
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return DEFAULT_SETTINGS;
     }
-  }, []);
+    return mergeSettings(JSON.parse(stored) as Partial<UserSettings>);
+  } catch (error) {
+    console.error("Failed to load user settings:", error);
+    localStorage.removeItem(STORAGE_KEY);
+    return DEFAULT_SETTINGS;
+  }
+}
 
-  // Save settings to localStorage whenever they change
+function persistSettings(settings: UserSettings) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.error("Failed to save user settings:", error);
+  }
+}
+
+interface UserSettingsContextValue {
+  settings: UserSettings;
+  updateSettings: <T extends keyof UserSettings, K extends keyof UserSettings[T]>(
+    category: T,
+    key: K,
+    value: UserSettings[T][K],
+  ) => void;
+  updateNotificationSetting: (key: keyof UserSettings["general"]["notifications"], value: boolean) => void;
+  resetSettings: () => void;
+  getSetting: <T extends keyof UserSettings, K extends keyof UserSettings[T]>(
+    category: T,
+    key: K,
+    defaultValue?: UserSettings[T][K],
+  ) => UserSettings[T][K];
+}
+
+const UserSettingsContext = createContext<UserSettingsContextValue | null>(null);
+
+export function UserSettingsProvider({ children }: { children: ReactNode }) {
+  const [settings, setSettings] = useState<UserSettings>(readStoredSettings);
+
   const saveSettings = useCallback((newSettings: UserSettings) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
-    } catch (error) {
-      console.error("Failed to save user settings:", error);
-    }
+    persistSettings(newSettings);
   }, []);
 
-  // Update a specific setting
   const updateSettings = useCallback(
     <T extends keyof UserSettings, K extends keyof UserSettings[T]>(category: T, key: K, value: UserSettings[T][K]) => {
       setSettings((prev) => {
@@ -119,7 +177,6 @@ export function useUserSettings() {
     [saveSettings],
   );
 
-  // Update nested notification settings
   const updateNotificationSetting = useCallback(
     (key: keyof UserSettings["general"]["notifications"], value: boolean) => {
       setSettings((prev) => {
@@ -140,13 +197,11 @@ export function useUserSettings() {
     [saveSettings],
   );
 
-  // Reset all settings to defaults
   const resetSettings = useCallback(() => {
     setSettings(DEFAULT_SETTINGS);
     saveSettings(DEFAULT_SETTINGS);
   }, [saveSettings]);
 
-  // Get a specific setting value
   const getSetting = useCallback(
     <T extends keyof UserSettings, K extends keyof UserSettings[T]>(
       category: T,
@@ -158,11 +213,24 @@ export function useUserSettings() {
     [settings],
   );
 
-  return {
-    settings,
-    updateSettings,
-    updateNotificationSetting,
-    resetSettings,
-    getSetting,
-  };
+  const value = useMemo(
+    () => ({
+      settings,
+      updateSettings,
+      updateNotificationSetting,
+      resetSettings,
+      getSetting,
+    }),
+    [settings, updateSettings, updateNotificationSetting, resetSettings, getSetting],
+  );
+
+  return <UserSettingsContext.Provider value={value}>{children}</UserSettingsContext.Provider>;
+}
+
+export function useUserSettings() {
+  const context = useContext(UserSettingsContext);
+  if (!context) {
+    throw new Error("useUserSettings must be used within UserSettingsProvider");
+  }
+  return context;
 }

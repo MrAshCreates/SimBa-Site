@@ -3,13 +3,15 @@ import { Circle, CheckCircle, XCircle, Loader2, Trash2 } from "lucide-react";
 import styles from "./output-console.module.css";
 
 export type OutputStatus = "ready" | "running" | "success" | "error";
-export type OutputType = "success" | "error" | "info" | "program";
+export type OutputType = "success" | "error" | "info" | "program" | "command";
+export type ConsoleSource = "run" | "session";
 
 export interface OutputLine {
   id: string;
   type: OutputType;
   content: string;
   timestamp: Date;
+  source?: ConsoleSource;
 }
 
 interface OutputConsoleProps {
