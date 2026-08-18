@@ -182,11 +182,14 @@ rust$
     id: "mixed-speed",
     title: "Mixed Speed Lab",
     description:
-      "Times the same sum in SimBa, Python, and Rust. SimBa is written like Python; Python/Rust ecosystems stay in embeds.",
+      "Times the same sum in SimBa, Python, and Rust. Playground n stays small so Cloudflare Workers Free (10ms CPU) can finish; raise n locally for a real benchmark.",
     code: `# SimBa writes like Python, runs as a compiled-host language,
 # and can embed real Python and Rust in the same file.
+#
+# n=5000 fits the playground Worker (Cloudflare Free = 10ms CPU).
+# Local CLI: set n to 2000000 in all three languages and run: simba run file.smba
 
-n = 2000000
+n = 5000
 print("Counting sum of 0.." + str(n - 1) + " in three languages")
 print("")
 
@@ -205,7 +208,7 @@ print("")
 $python
 import time
 
-N = 2000000
+N = 5000
 start = time.perf_counter()
 total = 0
 i = 0
@@ -222,7 +225,7 @@ python$
 $python
 import time
 
-N = 2000000
+N = 5000
 start = time.perf_counter()
 total = sum(range(N))
 elapsed = (time.perf_counter() - start) * 1000
@@ -237,7 +240,7 @@ use std::hint::black_box;
 use std::time::Instant;
 
 fn main() {
-    let n: i64 = black_box(2000000);
+    let n: i64 = black_box(5000);
     let start = Instant::now();
     let mut total: i64 = 0;
     let mut i: i64 = 0;
@@ -257,7 +260,7 @@ $rust
 use std::hint::black_box;
 
 fn main() {
-    let n: i64 = black_box(2000000);
+    let n: i64 = black_box(5000);
     let start = std::time::Instant::now();
     let total: i64 = (0..n).map(black_box).sum();
     let ms = start.elapsed().as_secs_f64() * 1000.0;

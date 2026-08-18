@@ -273,7 +273,7 @@ export default function Playground() {
           const looksLikeHtml = /^\s*</.test(text);
           throw new Error(
             looksLikeHtml
-              ? `The runner returned an HTML error page (${response.status}). This usually means the Worker timed out or ran out of CPU on a long program.`
+              ? `The runner returned an HTML error page (${response.status}). Cloudflare Workers Free allows 10ms of CPU per request, so long loops get killed. This is not a GitHub Pages routing failure — Compile can succeed while Run hits the limit. Lower n, or run \`simba run\` locally.`
               : `Unexpected response from the runner (${response.status}).`,
           );
         }
