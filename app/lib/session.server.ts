@@ -1,8 +1,8 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { getDb } from "./db.server";
+import { sqlGet, sqlRun } from "./db.server";
 
 const SESSION_COOKIE = "simba_session";
 const SESSION_DAYS = 30;
+const PBKDF2_ITERATIONS = 25_000;
 
 export interface SessionUser {
   id: string;
@@ -15,7 +15,7 @@ export interface SessionUser {
   isOwner?: boolean;
 }
 
-interface UserRow {
+export interface UserRow {
   id: string;
   username: string;
   email: string;
@@ -27,25 +27,77 @@ interface UserRow {
   created_at: string;
 }
 
-export function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
+function toHex(bytes: Uint8Array): string {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function verifyPassword(password: string, stored: string): boolean {
-  const [salt, hash] = stored.split(":");
-  if (!salt || !hash) {
+function fromHex(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) {
     return false;
   }
 
-  const actual = Buffer.from(hash, "hex");
-  const test = scryptSync(password, salt, 64);
-  if (actual.length !== test.length) {
-    return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a[i] ^ b[i];
+  }
+  return diff === 0;
+}
+
+async function derivePbkdf2(password: string, salt: Uint8Array): Promise<Uint8Array> {
+  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, [
+    "deriveBits",
+  ]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: Uint8Array.from(salt), iterations: PBKDF2_ITERATIONS },
+    keyMaterial,
+    256,
+  );
+  return new Uint8Array(bits);
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await derivePbkdf2(password, salt);
+  return `pbkdf2:${toHex(salt)}:${toHex(hash)}`;
+}
+
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  if (stored.startsWith("pbkdf2:")) {
+    const [, saltHex, hashHex] = stored.split(":");
+    if (!saltHex || !hashHex) {
+      return false;
+    }
+
+    const actual = fromHex(hashHex);
+    const test = await derivePbkdf2(password, fromHex(saltHex));
+    return timingSafeEqualBytes(actual, test);
   }
 
-  return timingSafeEqual(actual, test);
+  try {
+    const { scryptSync, timingSafeEqual } = await import("node:crypto");
+    const [salt, hash] = stored.split(":");
+    if (!salt || !hash) {
+      return false;
+    }
+
+    const actual = Buffer.from(hash, "hex");
+    const test = scryptSync(password, salt, 64);
+    if (actual.length !== test.length) {
+      return false;
+    }
+
+    return timingSafeEqual(actual, test);
+  } catch {
+    return false;
+  }
 }
 
 export function mapUser(row: UserRow): SessionUser {
@@ -61,59 +113,58 @@ export function mapUser(row: UserRow): SessionUser {
   };
 }
 
-export function getUserByEmail(email: string): UserRow | undefined {
-  return getDb()
-    .prepare("SELECT * FROM users WHERE email = ?")
-    .get(email.toLowerCase()) as unknown as UserRow | undefined;
+export async function getUserByEmail(email: string): Promise<UserRow | undefined> {
+  return sqlGet<UserRow>("SELECT * FROM users WHERE email = ?", email.toLowerCase());
 }
 
-export function getUserById(id: string): UserRow | undefined {
-  return getDb().prepare("SELECT * FROM users WHERE id = ?").get(id) as unknown as UserRow | undefined;
+export async function getUserById(id: string): Promise<UserRow | undefined> {
+  return sqlGet<UserRow>("SELECT * FROM users WHERE id = ?", id);
 }
 
-export function createSession(userId: string): string {
-  const db = getDb();
-  const id = randomBytes(32).toString("hex");
+export async function createSession(userId: string): Promise<string> {
+  const id = toHex(crypto.getRandomValues(new Uint8Array(32)));
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  db.prepare("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)").run(id, userId, expiresAt);
+  await sqlRun("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)", id, userId, expiresAt);
   return id;
 }
 
-export function deleteSession(sessionId: string) {
-  getDb().prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
+export async function deleteSession(sessionId: string) {
+  await sqlRun("DELETE FROM sessions WHERE id = ?", sessionId);
 }
 
-export function getUserFromRequest(request: Request): SessionUser | null {
+export async function getUserFromRequest(request: Request): Promise<SessionUser | null> {
   const sessionId = readCookie(request, SESSION_COOKIE);
   if (!sessionId) {
     return null;
   }
 
-  const db = getDb();
-  const session = db.prepare("SELECT user_id, expires_at FROM sessions WHERE id = ?").get(sessionId) as unknown as
-    | { user_id: string; expires_at: string }
-    | undefined;
+  const session = await sqlGet<{ user_id: string; expires_at: string }>(
+    "SELECT user_id, expires_at FROM sessions WHERE id = ?",
+    sessionId,
+  );
 
   if (!session) {
     return null;
   }
 
   if (new Date(session.expires_at).getTime() < Date.now()) {
-    deleteSession(sessionId);
+    await deleteSession(sessionId);
     return null;
   }
 
-  const user = getUserById(session.user_id);
+  const user = await getUserById(session.user_id);
   return user ? mapUser(user) : null;
 }
 
-export function sessionCookieHeader(sessionId: string): string {
+export function sessionCookieHeader(sessionId: string, request?: Request): string {
   const maxAge = SESSION_DAYS * 24 * 60 * 60;
-  return `${SESSION_COOKIE}=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+  const secure = request && new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  return `${SESSION_COOKIE}=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
-export function clearSessionCookieHeader(): string {
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+export function clearSessionCookieHeader(request?: Request): string {
+  const secure = request && new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
 export function readSessionId(request: Request): string | null {

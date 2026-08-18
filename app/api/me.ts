@@ -4,7 +4,7 @@ import { isSameOriginRequest, jsonError, readJsonBody } from "~/lib/request-secu
 import { getUserFromRequest } from "~/lib/session.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = getUserFromRequest(request);
+  const user = await getUserFromRequest(request);
   if (!user) {
     return Response.json({ user: null }, { status: 401 });
   }
@@ -21,7 +21,7 @@ export async function action({ request }: Route.ActionArgs) {
     return jsonError("Invalid request origin.", 403);
   }
 
-  const user = getUserFromRequest(request);
+  const user = await getUserFromRequest(request);
   if (!user) {
     return jsonError("You need to be signed in.", 401);
   }

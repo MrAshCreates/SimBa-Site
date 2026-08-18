@@ -85,6 +85,7 @@ export default function SignUp() {
     try {
       const response = await fetch("/api/signup", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: username.trim(),

@@ -13,14 +13,14 @@ export async function action({ request }: Route.ActionArgs) {
 
   const sessionId = readSessionId(request);
   if (sessionId) {
-    deleteSession(sessionId);
+    await deleteSession(sessionId);
   }
 
   return Response.json(
     { ok: true },
     {
       headers: {
-        "Set-Cookie": clearSessionCookieHeader(),
+        "Set-Cookie": clearSessionCookieHeader(request),
       },
     },
   );

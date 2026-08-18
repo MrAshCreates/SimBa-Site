@@ -1,4 +1,4 @@
-import { getDb } from "~/lib/db.server";
+import { sqlAll, sqlGet, sqlRun } from "~/lib/db.server";
 
 export interface UserFile {
   id: string;
@@ -54,18 +54,18 @@ export function sanitizeFileName(name: string): string | null {
   return safe.includes(".") ? safe : `${safe}.smba`;
 }
 
-export function listFiles(userId: string): UserFile[] {
-  const rows = getDb().prepare("SELECT * FROM files WHERE user_id = ? ORDER BY updated_at DESC").all(userId) as unknown as FileRow[];
+export async function listFiles(userId: string): Promise<UserFile[]> {
+  const rows = await sqlAll<FileRow>("SELECT * FROM files WHERE user_id = ? ORDER BY updated_at DESC", userId);
   return rows.map(mapFile);
 }
 
-export function getFile(userId: string, fileId: string): UserFile | null {
-  const row = getDb().prepare("SELECT * FROM files WHERE id = ? AND user_id = ?").get(fileId, userId) as unknown as FileRow | undefined;
+export async function getFile(userId: string, fileId: string): Promise<UserFile | null> {
+  const row = await sqlGet<FileRow>("SELECT * FROM files WHERE id = ? AND user_id = ?", fileId, userId);
   return row ? mapFile(row) : null;
 }
 
-export function ensureDefaultFile(userId: string): UserFile {
-  const existing = listFiles(userId);
+export async function ensureDefaultFile(userId: string): Promise<UserFile> {
+  const existing = await listFiles(userId);
   if (existing.length > 0) {
     return existing[0];
   }
@@ -73,12 +73,9 @@ export function ensureDefaultFile(userId: string): UserFile {
   return createFile(userId, "main.smba", DEFAULT_MAIN_SMBA);
 }
 
-export function uniqueFileName(userId: string, desiredName: string): string {
+export async function uniqueFileName(userId: string, desiredName: string): Promise<string> {
   const base = sanitizeFileName(desiredName) ?? "untitled.smba";
-  const db = getDb();
-  const names = new Set(
-    (db.prepare("SELECT name FROM files WHERE user_id = ?").all(userId) as unknown as { name: string }[]).map((row) => row.name),
-  );
+  const names = new Set((await sqlAll<{ name: string }>("SELECT name FROM files WHERE user_id = ?", userId)).map((row) => row.name));
 
   if (!names.has(base)) {
     return base;
@@ -94,13 +91,19 @@ export function uniqueFileName(userId: string, desiredName: string): string {
   return `${stem}-${n}${ext}`;
 }
 
-export function createFile(userId: string, name: string, content = DEFAULT_MAIN_SMBA): UserFile {
-  const fileName = uniqueFileName(userId, name);
+export async function createFile(userId: string, name: string, content = DEFAULT_MAIN_SMBA): Promise<UserFile> {
+  const fileName = await uniqueFileName(userId, name);
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
-  getDb()
-    .prepare("INSERT INTO files (id, user_id, name, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(id, userId, fileName, content, now, now);
+  await sqlRun(
+    "INSERT INTO files (id, user_id, name, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+    id,
+    userId,
+    fileName,
+    content,
+    now,
+    now,
+  );
 
   return {
     id,
@@ -112,12 +115,12 @@ export function createFile(userId: string, name: string, content = DEFAULT_MAIN_
   };
 }
 
-export function updateFile(
+export async function updateFile(
   userId: string,
   fileId: string,
   updates: { name?: string; content?: string },
-): UserFile | null {
-  const current = getFile(userId, fileId);
+): Promise<UserFile | null> {
+  const current = await getFile(userId, fileId);
   if (!current) {
     return null;
   }
@@ -128,12 +131,13 @@ export function updateFile(
     if (!sanitized) {
       return null;
     }
-    nextName = sanitized === current.name ? current.name : uniqueFileName(userId, sanitized);
+    nextName = sanitized === current.name ? current.name : await uniqueFileName(userId, sanitized);
   }
 
   const nextContent = updates.content ?? current.content;
   const now = new Date().toISOString();
-  getDb().prepare("UPDATE files SET name = ?, content = ?, updated_at = ? WHERE id = ? AND user_id = ?").run(
+  await sqlRun(
+    "UPDATE files SET name = ?, content = ?, updated_at = ? WHERE id = ? AND user_id = ?",
     nextName,
     nextContent,
     now,
@@ -149,7 +153,7 @@ export function updateFile(
   };
 }
 
-export function deleteFile(userId: string, fileId: string): boolean {
-  const result = getDb().prepare("DELETE FROM files WHERE id = ? AND user_id = ?").run(fileId, userId);
+export async function deleteFile(userId: string, fileId: string): Promise<boolean> {
+  const result = await sqlRun("DELETE FROM files WHERE id = ? AND user_id = ?", fileId, userId);
   return result.changes > 0;
 }

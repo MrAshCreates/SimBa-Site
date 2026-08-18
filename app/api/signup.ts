@@ -43,12 +43,12 @@ export async function action({ request }: Route.ActionArgs) {
       return jsonError("Username or email already exists.", 409);
     }
 
-    const sessionId = startSession(user.id);
+    const sessionId = await startSession(user.id);
     return Response.json(
       { user },
       {
         headers: {
-          "Set-Cookie": sessionCookieHeader(sessionId),
+          "Set-Cookie": sessionCookieHeader(sessionId, request),
         },
       },
     );
@@ -56,6 +56,7 @@ export async function action({ request }: Route.ActionArgs) {
     if (error instanceof Error && error.message === "payload-too-large") {
       return jsonError("Request is too large.", 413);
     }
+    console.error("signup failed", error);
     return jsonError("Unable to create an account. Please try again.", 500);
   }
 }

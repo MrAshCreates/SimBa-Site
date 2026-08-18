@@ -8,7 +8,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     return jsonError("Invalid request origin.", 403);
   }
 
-  const user = getUserFromRequest(request);
+  const user = await getUserFromRequest(request);
   if (!user) {
     return jsonError("You need to be signed in.", 401);
   }
@@ -19,7 +19,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (request.method === "DELETE") {
-    const deleted = deleteFile(user.id, fileId);
+    const deleted = await deleteFile(user.id, fileId);
     if (!deleted) {
       return jsonError("File not found.", 404);
     }
@@ -29,7 +29,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (request.method === "PATCH") {
     try {
       const body = await readJsonBody<{ name?: unknown; content?: unknown }>(request, 256 * 1024);
-      const file = updateFile(user.id, fileId, {
+      const file = await updateFile(user.id, fileId, {
         name: typeof body?.name === "string" ? body.name : undefined,
         content: typeof body?.content === "string" ? body.content : undefined,
       });

@@ -39,6 +39,15 @@ export function headers() {
   };
 }
 
+export const middleware: Route.MiddlewareFunction[] = [
+  async ({ context }, next) => {
+    const { bindCloudflareEnv } = await import("./lib/db.server");
+    const cloudflare = (context as { cloudflare?: { env?: unknown } }).cloudflare;
+    bindCloudflareEnv(cloudflare?.env ?? (context as { env?: unknown }).env);
+    return next();
+  },
+];
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const { rootCssClass, resolvedScheme } = useColorScheme();
   return (

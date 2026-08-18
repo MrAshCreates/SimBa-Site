@@ -4,6 +4,7 @@
 /node_modules/
 /data/
 simba_interpreter/target/
+/.wrangler/
 
 # React Router
 /.react-router/

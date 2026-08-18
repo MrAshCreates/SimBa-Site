@@ -20,7 +20,7 @@ export async function action({ request }: Route.ActionArgs) {
     return jsonError("Invalid request origin.", 403);
   }
 
-  if (!getUserFromRequest(request)) {
+  if (!(await getUserFromRequest(request))) {
     return jsonError("You need to be signed in.", 401);
   }
 

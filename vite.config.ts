@@ -5,6 +5,6 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   plugins: [reactRouter(), tsconfigPaths()],
   ssr: {
-    external: ["node:sqlite"],
+    external: ["node:sqlite", "cloudflare:workers"],
   },
 });

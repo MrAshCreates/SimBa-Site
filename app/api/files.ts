@@ -4,13 +4,13 @@ import { isSameOriginRequest, jsonError, readJsonBody } from "~/lib/request-secu
 import { getUserFromRequest } from "~/lib/session.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = getUserFromRequest(request);
+  const user = await getUserFromRequest(request);
   if (!user) {
     return jsonError("You need to be signed in.", 401);
   }
 
-  ensureDefaultFile(user.id);
-  return Response.json({ files: listFiles(user.id) });
+  await ensureDefaultFile(user.id);
+  return Response.json({ files: await listFiles(user.id) });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -22,7 +22,7 @@ export async function action({ request }: Route.ActionArgs) {
     return jsonError("Invalid request origin.", 403);
   }
 
-  const user = getUserFromRequest(request);
+  const user = await getUserFromRequest(request);
   if (!user) {
     return jsonError("You need to be signed in.", 401);
   }
@@ -31,7 +31,7 @@ export async function action({ request }: Route.ActionArgs) {
     const body = await readJsonBody<{ name?: unknown; content?: unknown }>(request, 256 * 1024);
     const name = typeof body?.name === "string" ? body.name : "untitled.smba";
     const content = typeof body?.content === "string" ? body.content : undefined;
-    const file = createFile(user.id, name, content);
+    const file = await createFile(user.id, name, content);
     return Response.json({ file });
   } catch (error) {
     if (error instanceof Error && error.message === "payload-too-large") {

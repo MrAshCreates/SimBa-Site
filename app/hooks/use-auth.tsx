@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/me")
+    fetch("/api/me", { credentials: "same-origin" })
       .then(async (response) => {
         if (!response.ok) {
           return { user: null };
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await fetch("/api/logout", { method: "POST" });
+      await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
     } catch {
       // Still clear the client session if the network call fails.
     }
