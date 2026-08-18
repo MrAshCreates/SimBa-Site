@@ -84,8 +84,9 @@ export async function getCloudflareEnv(): Promise<CloudflareEnv | undefined> {
 
   envResolved = true;
   try {
-    const mod = await import("cloudflare:workers");
-    cloudflareEnv = (mod as { env?: CloudflareEnv }).env;
+    const spec = "cloudflare" + ":workers";
+    const mod = (await import(/* @vite-ignore */ spec)) as { env?: CloudflareEnv };
+    cloudflareEnv = mod.env;
   } catch {
     cloudflareEnv = undefined;
   }
