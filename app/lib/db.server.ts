@@ -2,16 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "simba.db");
-
-mkdirSync(DATA_DIR, { recursive: true });
-
-const db = new DatabaseSync(DB_PATH);
-
-db.exec("PRAGMA journal_mode = WAL");
-db.exec("PRAGMA foreign_keys = ON");
-db.exec(`
+const SCHEMA = `
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
@@ -44,8 +35,50 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_files_user ON files(user_id);
-`);
+`;
+
+let db: DatabaseSync | undefined;
+const afterInit: Array<() => void> = [];
+
+export function afterDatabaseInit(fn: () => void) {
+  afterInit.push(fn);
+}
+
+function isCloudflareWorkers(): boolean {
+  return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+}
+
+function openFileDatabase(): DatabaseSync | undefined {
+  try {
+    const dataDir = path.join(process.cwd(), "data");
+    mkdirSync(dataDir, { recursive: true });
+    const fileDb = new DatabaseSync(path.join(dataDir, "simba.db"));
+    fileDb.exec("PRAGMA journal_mode = WAL");
+    return fileDb;
+  } catch {
+    return undefined;
+  }
+}
+
+function openDatabase(): DatabaseSync {
+  if (!isCloudflareWorkers()) {
+    const fileDb = openFileDatabase();
+    if (fileDb) {
+      return fileDb;
+    }
+  }
+
+  return new DatabaseSync(":memory:");
+}
 
 export function getDb() {
+  if (!db) {
+    db = openDatabase();
+    db.exec("PRAGMA foreign_keys = ON");
+    db.exec(SCHEMA);
+    for (const fn of afterInit) {
+      fn();
+    }
+  }
   return db;
 }

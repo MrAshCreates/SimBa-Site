@@ -1,4 +1,4 @@
-import { getDb } from "~/lib/db.server";
+import { afterDatabaseInit, getDb } from "~/lib/db.server";
 import {
   createSession,
   getUserByEmail,
@@ -49,7 +49,7 @@ function seedUsers() {
   }
 }
 
-seedUsers();
+afterDatabaseInit(seedUsers);
 
 export async function authenticateUser(email: string, password: string): Promise<SessionUser | null> {
   const row = getUserByEmail(email.trim().toLowerCase());
