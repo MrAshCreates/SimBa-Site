@@ -3,10 +3,7 @@
   "name": "simba-site",
   "compatibility_date": "2026-08-18",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "./build/server/index.js",
-  "assets": {
-    "directory": "./build/client"
-  },
+  "main": "./workers/app.ts",
   "observability": {
     "enabled": true
   },

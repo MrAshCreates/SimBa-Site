@@ -1,8 +1,13 @@
-import { mkdirSync } from "node:fs";
-import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
-
 export type SqlValue = string | number | null;
+
+type FileSqlite = {
+  exec: (sql: string) => void;
+  prepare: (query: string) => {
+    get: (...params: SqlValue[]) => unknown;
+    all: (...params: SqlValue[]) => unknown[];
+    run: (...params: SqlValue[]) => { changes?: number | bigint };
+  };
+};
 
 type D1Prepared = {
   bind: (...values: SqlValue[]) => {
@@ -57,7 +62,7 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_files_user ON files(user_id);
 `;
 
-let sqlite: DatabaseSync | undefined;
+let sqlite: FileSqlite | undefined;
 let cloudflareEnv: CloudflareEnv | undefined;
 let envResolved = false;
 let schemaReady = false;
@@ -103,21 +108,13 @@ async function getD1(): Promise<D1DatabaseBinding | undefined> {
   return undefined;
 }
 
-function openSqlite(): DatabaseSync {
+async function openSqlite(): Promise<FileSqlite> {
   if (sqlite) {
     return sqlite;
   }
 
-  try {
-    const dataDir = path.join(process.cwd(), "data");
-    mkdirSync(dataDir, { recursive: true });
-    sqlite = new DatabaseSync(path.join(dataDir, "simba.db"));
-    sqlite.exec("PRAGMA journal_mode = WAL");
-  } catch {
-    sqlite = new DatabaseSync(":memory:");
-  }
-
-  sqlite.exec("PRAGMA foreign_keys = ON");
+  const { openFileSqlite } = await import("./sqlite.server");
+  sqlite = openFileSqlite();
   return sqlite;
 }
 
@@ -140,7 +137,7 @@ export async function ensureDatabase() {
           "D1 database binding DB is missing. In Cloudflare, add a D1 binding named DB to the simba-site Worker.",
         );
       } else {
-        openSqlite().exec(SCHEMA);
+        (await openSqlite()).exec(SCHEMA);
       }
 
       schemaReady = true;
@@ -165,7 +162,7 @@ export async function sqlGet<T>(query: string, ...params: SqlValue[]): Promise<T
     return row ?? undefined;
   }
 
-  return openSqlite().prepare(query).get(...params) as T | undefined;
+  return (await openSqlite()).prepare(query).get(...params) as T | undefined;
 }
 
 export async function sqlAll<T>(query: string, ...params: SqlValue[]): Promise<T[]> {
@@ -176,7 +173,7 @@ export async function sqlAll<T>(query: string, ...params: SqlValue[]): Promise<T
     return result.results ?? [];
   }
 
-  return openSqlite().prepare(query).all(...params) as T[];
+  return (await openSqlite()).prepare(query).all(...params) as T[];
 }
 
 export async function sqlRun(query: string, ...params: SqlValue[]): Promise<{ changes: number }> {
@@ -187,6 +184,6 @@ export async function sqlRun(query: string, ...params: SqlValue[]): Promise<{ ch
     return { changes: result.meta?.changes ?? 0 };
   }
 
-  const result = openSqlite().prepare(query).run(...params);
+  const result = (await openSqlite()).prepare(query).run(...params);
   return { changes: Number(result.changes ?? 0) };
 }
