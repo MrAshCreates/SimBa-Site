@@ -57,6 +57,9 @@ export async function action({ request }: Route.ActionArgs) {
       return jsonError("Request is too large.", 413);
     }
     console.error("signup failed", error);
+    if (error instanceof Error && error.message.includes("D1 database binding")) {
+      return jsonError("Account storage is unavailable. Try again shortly.", 503);
+    }
     return jsonError("Unable to create an account. Please try again.", 500);
   }
 }

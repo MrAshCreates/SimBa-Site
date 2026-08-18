@@ -9,17 +9,17 @@ type FileSqlite = {
   };
 };
 
-type D1Prepared = {
-  bind: (...values: SqlValue[]) => {
-    first: <T>() => Promise<T | null>;
-    all: <T>() => Promise<{ results: T[] }>;
-    run: () => Promise<{ meta?: { changes?: number } }>;
-  };
+type D1Statement = {
+  bind: (...values: SqlValue[]) => D1Statement;
+  first: <T>() => Promise<T | null>;
+  all: <T>() => Promise<{ results: T[] }>;
+  run: () => Promise<{ meta?: { changes?: number } }>;
 };
 
 type D1DatabaseBinding = {
-  prepare: (query: string) => D1Prepared;
+  prepare: (query: string) => D1Statement;
   exec: (query: string) => Promise<unknown>;
+  batch?: (statements: D1Statement[]) => Promise<unknown>;
 };
 
 type CloudflareEnv = {
@@ -64,7 +64,6 @@ const SCHEMA = `
 
 let sqlite: FileSqlite | undefined;
 let cloudflareEnv: CloudflareEnv | undefined;
-let envResolved = false;
 let schemaReady = false;
 let schemaPromise: Promise<void> | undefined;
 const afterInit: Array<() => Promise<void>> = [];
@@ -79,21 +78,20 @@ export function bindCloudflareEnv(env: unknown) {
   }
 
   cloudflareEnv = env as CloudflareEnv;
-  envResolved = true;
 }
 
 export async function getCloudflareEnv(): Promise<CloudflareEnv | undefined> {
-  if (envResolved) {
+  if (cloudflareEnv?.DB) {
     return cloudflareEnv;
   }
 
-  envResolved = true;
   try {
-    const spec = "cloudflare" + ":workers";
-    const mod = (await import(/* @vite-ignore */ spec)) as { env?: CloudflareEnv };
-    cloudflareEnv = mod.env;
+    const { env } = await import("cloudflare:workers");
+    if (env && typeof env === "object") {
+      cloudflareEnv = env as CloudflareEnv;
+    }
   } catch {
-    cloudflareEnv = undefined;
+    // Local Node has no Workers env object.
   }
 
   return cloudflareEnv;
@@ -122,6 +120,24 @@ function isCloudflareWorkers(): boolean {
   return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
 }
 
+function schemaStatements(): string[] {
+  return SCHEMA.split(";")
+    .map((statement) => statement.trim())
+    .filter(Boolean);
+}
+
+async function applyD1Schema(d1: D1DatabaseBinding) {
+  const statements = schemaStatements().map((statement) => d1.prepare(statement));
+  if (typeof d1.batch === "function") {
+    await d1.batch(statements);
+    return;
+  }
+
+  for (const statement of statements) {
+    await statement.run();
+  }
+}
+
 export async function ensureDatabase() {
   if (schemaReady) {
     return;
@@ -131,7 +147,7 @@ export async function ensureDatabase() {
     schemaPromise = (async () => {
       const d1 = await getD1();
       if (d1) {
-        await d1.exec(`PRAGMA foreign_keys = ON;${SCHEMA}`);
+        await applyD1Schema(d1);
       } else if (isCloudflareWorkers()) {
         throw new Error(
           "D1 database binding DB is missing. In Cloudflare, add a D1 binding named DB to the simba-site Worker.",
@@ -142,7 +158,11 @@ export async function ensureDatabase() {
 
       schemaReady = true;
       for (const fn of afterInit) {
-        await fn();
+        try {
+          await fn();
+        } catch (error) {
+          console.error("database seed failed", error);
+        }
       }
     })().catch((error) => {
       schemaReady = false;

@@ -40,10 +40,9 @@ export function headers() {
 }
 
 export const middleware: Route.MiddlewareFunction[] = [
-  async ({ context }, next) => {
-    const { bindCloudflareEnv } = await import("./lib/db.server");
-    const cloudflare = (context as { cloudflare?: { env?: unknown } }).cloudflare;
-    bindCloudflareEnv(cloudflare?.env ?? (context as { env?: unknown }).env);
+  async (_args, next) => {
+    const { getCloudflareEnv } = await import("./lib/db.server");
+    await getCloudflareEnv();
     return next();
   },
 ];
