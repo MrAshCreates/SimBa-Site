@@ -5,7 +5,7 @@
   "scripts": {
     "build": "react-router build",
     "build:wasm": "bash scripts/build-simba-wasm.sh",
-    "dev": "react-router dev",
+    "dev": "node scripts/dev.mjs",
     "start": "react-router-serve ./build/server/index.js",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
@@ -55,7 +55,11 @@
     "endOfLine": "auto"
   },
   "allowScripts": {
+    "esbuild": true,
+    "esbuild@0.28.1": true,
     "esbuild@0.28.2": true,
+    "workerd": true,
+    "workerd@1.20260815.1": true,
     "fsevents@2.3.3": true
   }
 }
