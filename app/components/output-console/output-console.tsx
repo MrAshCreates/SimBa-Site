@@ -1,4 +1,3 @@
-import React from "react";
 import classNames from "classnames";
 import { Circle, CheckCircle, XCircle, Loader2, Trash2 } from "lucide-react";
 import styles from "./output-console.module.css";

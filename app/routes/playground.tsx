@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router";
 import classNames from "classnames";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -12,8 +12,8 @@ import { Sidebar } from "~/components/sidebar/sidebar";
 import type { FileNode } from "~/components/file-explorer/file-explorer";
 import { useAuth } from "~/hooks/use-auth";
 import { useUserSettings } from "~/hooks/use-user-settings";
-import { SIMBA_EXAMPLES, type SimBaExample } from "~/data/examples";
-import { getUserProjects, saveProject, deleteProject, type Project } from "~/data/auth";
+import { exampleFileName, findExampleByFilename, SIMBA_EXAMPLES, type SimBaExample } from "~/data/examples";
+import type { Project } from "~/data/auth";
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -25,6 +25,7 @@ import {
   Minimize2,
   Download,
   Upload,
+  X,
 } from "lucide-react";
 import styles from "./playground.module.css";
 
@@ -43,6 +44,7 @@ interface ExecutionResult {
   stdout: string;
   stderr: string;
   output?: string;
+  mode?: "compile" | "run" | "debug";
 }
 
 interface OpenFile {
@@ -53,6 +55,26 @@ interface OpenFile {
   isDirty: boolean;
   isReadOnly?: boolean;
   isExample?: boolean;
+}
+
+function parseProject(value: unknown): Project | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.id !== "string" || typeof record.name !== "string" || typeof record.content !== "string") {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    userId: typeof record.userId === "string" ? record.userId : "",
+    name: record.name,
+    content: record.content,
+    createdAt: new Date(String(record.createdAt)),
+    updatedAt: new Date(String(record.updatedAt)),
+  };
 }
 
 export default function Playground() {
@@ -66,14 +88,12 @@ export default function Playground() {
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [status, setStatus] = useState<OutputStatus>("ready");
   const [consoleMode, setConsoleMode] = useState<TerminalMode>("output");
+  const [compiledSource, setCompiledSource] = useState<string | null>(null);
 
   // Project state
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
-
-  // File explorer state
-  const [fileTree, setFileTree] = useState<FileNode[]>([]);
 
   // Panel visibility state
   const [showSidebar, setShowSidebar] = useState(true);
@@ -81,67 +101,109 @@ export default function Playground() {
   const [showActions, setShowActions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Initialize with default file containing SimBa example
-  useEffect(() => {
-    const defaultFile: OpenFile = {
-      id: "default",
-      name: "main.smba",
-      content: `# SimBa Hello World Example
-def greet(name: str) -> str:
-    return f"Hello, {name}! Welcome to SimBa!"
+  const fileTree: FileNode[] = projects.map((file) => ({
+    id: file.id,
+    name: file.name,
+    type: "file" as const,
+    path: file.name,
+  }));
 
-# Main execution
-if __name__ == "__main__":
-    message = greet("Developer")
-    print(message)
-    
-    # Demonstrate type safety
-    count: int = 42
-    print(f"The answer is {count}")`,
-      path: "main.smba",
-      isDirty: false,
-    };
-    setOpenFiles([defaultFile]);
-    setActiveFileId("default");
-
-    // Initialize file tree
-    const defaultFileNode: FileNode = {
-      id: "default",
-      name: "main.smba",
-      type: "file",
-      path: "main.smba",
-    };
-    setFileTree([defaultFileNode]);
+  const loadFiles = useCallback(async (): Promise<Project[]> => {
+    const response = await fetch("/api/files");
+    if (!response.ok) {
+      throw new Error("Failed to load files");
+    }
+    const data = (await response.json()) as { files?: unknown[] };
+    return (data.files ?? []).map(parseProject).filter((file): file is Project => file !== null);
   }, []);
 
-  // Redirect if not authenticated (but only after auth loading is complete)
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate("/login");
-      return;
     }
   }, [isAuthenticated, isLoading, navigate]);
 
-  // Load user projects
   useEffect(() => {
-    if (user) {
-      loadProjects();
-    }
-  }, [user]);
-
-  const loadProjects = async () => {
     if (!user) return;
 
+    let cancelled = false;
     setIsLoadingProjects(true);
-    try {
-      const userProjects = await getUserProjects(user.id);
-      setProjects(userProjects);
-    } catch (error) {
-      console.error("Failed to load projects:", error);
-    } finally {
-      setIsLoadingProjects(false);
+    loadFiles()
+      .then((files) => {
+        if (cancelled) return;
+        setProjects(files);
+        setOpenFiles((current) => {
+          if (current.length > 0) {
+            return current;
+          }
+          const first = files[0];
+          return first
+            ? [{ id: first.id, name: first.name, content: first.content, path: first.name, isDirty: false }]
+            : [];
+        });
+        setActiveFileId((current) => current ?? files[0]?.id ?? null);
+        setCurrentProject((current) => current ?? files[0] ?? null);
+      })
+      .catch((error) => {
+        console.error("Failed to load files:", error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingProjects(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, loadFiles]);
+
+  const persistFile = useCallback(async (fileId: string, updates: { name?: string; content?: string }) => {
+    const response = await fetch(`/api/files/${fileId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to save file");
     }
-  };
+    const data = (await response.json()) as { file?: unknown };
+    const saved = parseProject(data.file);
+    if (!saved) {
+      throw new Error("Invalid file response");
+    }
+
+    setProjects((prev) => prev.map((file) => (file.id === saved.id ? saved : file)));
+    setOpenFiles((prev) =>
+      prev.map((file) =>
+        file.id === saved.id
+          ? { ...file, name: saved.name, content: saved.content, path: saved.name, isDirty: false }
+          : file,
+      ),
+    );
+    setCurrentProject((prev) => (prev?.id === saved.id ? saved : prev));
+    return saved;
+  }, []);
+
+  useEffect(() => {
+    if (!settings.general?.autoSave) {
+      return;
+    }
+
+    const active = openFiles.find((file) => file.id === activeFileId);
+    if (!active?.isDirty || active.isReadOnly || active.isExample) {
+      return;
+    }
+
+    const delay = Math.max(1, settings.editor?.autoSaveDelay || 2) * 1000;
+    const timer = window.setTimeout(() => {
+      void persistFile(active.id, { content: active.content }).catch((error) => {
+        console.error("Auto-save failed:", error);
+      });
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [openFiles, activeFileId, persistFile, settings.general?.autoSave, settings.editor?.autoSaveDelay]);
 
   const addOutput = useCallback((type: "success" | "error" | "info" | "program", content: string) => {
     const newLine: OutputLine = {
@@ -169,132 +231,87 @@ if __name__ == "__main__":
   };
 
   const executeCode = useCallback(
-    async (isCompileOnly = false) => {
+    async (mode: "compile" | "run" | "debug" = "run", source?: string) => {
       const activeFile = getActiveFile();
-      if (!activeFile || !activeFile.content.trim()) {
+      const code = source ?? activeFile?.content ?? "";
+      if (!code.trim()) {
         addOutput("error", "No active file or file is empty, nothing to run.");
-        return;
+        return false;
       }
 
       setStatus("running");
-
-      // Clear output if setting is enabled
       if (settings.terminal?.clearOnRun !== false) {
         clearOutput();
       }
 
-      try {
-        if (isCompileOnly) {
-          // Simulate compilation check
-          addOutput("info", "=== SimBa Compilation ===");
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          // Basic syntax validation
-          const lines = activeFile.content.split("\n");
-          let hasErrors = false;
-
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line || line.startsWith("#")) continue;
-
-            // Check for basic syntax errors
-            if (line.includes("(") && !line.includes(")")) {
-              addOutput("error", `Line ${i + 1}: Syntax error - Missing closing parenthesis`);
-              hasErrors = true;
-            } else if (line.includes("[") && !line.includes("]")) {
-              addOutput("error", `Line ${i + 1}: Syntax error - Missing closing bracket`);
-              hasErrors = true;
-            } else if (line.includes("{") && !line.includes("}") && !line.endsWith("{")) {
-              addOutput("error", `Line ${i + 1}: Syntax error - Missing closing brace`);
-              hasErrors = true;
-            }
-          }
-
-          if (!hasErrors) {
-            addOutput("success", "✓ Lexical analysis complete");
-            addOutput("success", "✓ Parsing successful - AST generated");
-            addOutput("success", "✓ Semantic analysis passed");
-            addOutput("success", "✓ Type checking complete");
-            addOutput("success", "✓ Memory safety validation passed");
-            addOutput("success", "✓ Code generation complete");
-            addOutput("info", "\nCompilation successful! Ready to execute.");
-            setStatus("success");
-          } else {
-            setStatus("error");
-          }
-        } else {
-          // Execute the actual code
-          addOutput("info", "=== SimBa Execution ===");
-          addOutput("info", "Submitting code for execution...");
-
-          const response = await fetch("/api/run-simba-code", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ code: activeFile.content }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const result: ExecutionResult = await response.json();
-
-          // Display execution logs first
-          if (result.stdout) {
-            addOutput("info", "\n=== Execution Details ===");
-            const outputLines = result.stdout.split("\n");
-            outputLines.forEach((line) => {
-              if (line.trim()) {
-                // Determine output type based on content
-                if (line.includes("Error") || line.includes("error")) {
-                  addOutput("error", line);
-                } else if (line.includes("✓") || line.includes("successful")) {
-                  addOutput("info", line);
-                } else {
-                  addOutput("info", line);
-                }
-              }
-            });
-          }
-
-          // Display any errors
-          if (result.stderr) {
-            const errorLines = result.stderr.split("\n");
-            errorLines.forEach((line) => {
-              if (line.trim()) {
-                addOutput("error", line);
-              }
-            });
-          }
-
-          // Display program output at the bottom (moved to end for better readability)
-          if (result.output && result.output.trim()) {
-            addOutput("info", "\n=== Program Output ===");
-            const outputLines = result.output.split("\n");
-            outputLines.forEach((line) => {
-              if (line.trim()) {
-                addOutput("program", line);
-              }
-            });
-          }
-
-          // Set final status
-          if (result.status === "success") {
-            addOutput("success", "\nExecution completed successfully");
-            setStatus("success");
-          } else {
-            setStatus("error");
-          }
+      const runRequest = async (requestMode: "compile" | "run" | "debug") => {
+        const response = await fetch("/api/run-simba-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, mode: requestMode }),
+        });
+        const result = (await response.json()) as ExecutionResult & { error?: string };
+        if (!response.ok) {
+          throw new Error(result.error || `HTTP error! status: ${response.status}`);
         }
+        return result;
+      };
+
+      const printResult = (result: ExecutionResult, label: string) => {
+        if (result.stderr) {
+          result.stderr.split("\n").forEach((line) => {
+            if (line.trim()) addOutput("error", line);
+          });
+        }
+        const text = result.output || result.stdout || "";
+        if (text.trim()) {
+          addOutput("info", `\n=== ${label} ===`);
+          text.split("\n").forEach((line) => {
+            if (!line.trim()) return;
+            if (line.startsWith("[debug]")) {
+              addOutput("info", line);
+            } else {
+              addOutput(line.toLowerCase().includes("error") ? "error" : "program", line);
+            }
+          });
+        }
+      };
+
+      try {
+        addOutput("info", "=== SimBa Compile ===");
+        const compiled = await runRequest("compile");
+        printResult(compiled, "Compiler");
+        if (compiled.status !== "success") {
+          addOutput("error", "Compile failed. Fix the errors above before running.");
+          setStatus("error");
+          setCompiledSource(null);
+          return false;
+        }
+        addOutput("success", "Compile succeeded.");
+        setCompiledSource(code);
+
+        if (mode === "compile") {
+          setStatus("success");
+          return true;
+        }
+
+        addOutput("info", mode === "debug" ? "=== SimBa Debug ===" : "=== SimBa Execution ===");
+        const executed = await runRequest(mode);
+        printResult(executed, mode === "debug" ? "Debug output" : "Program output");
+        if (executed.status === "success") {
+          addOutput("success", mode === "debug" ? "Debug run finished." : "Execution completed successfully.");
+          setStatus("success");
+          return true;
+        }
+        setStatus("error");
+        return false;
       } catch (error) {
         addOutput(
           "error",
           `Network error: ${error instanceof Error ? error.message : "Failed to connect to execution server"}`,
         );
-        addOutput("error", "Please check your connection and try again.");
         setStatus("error");
+        return false;
       }
     },
     [openFiles, activeFileId, addOutput, clearOutput, settings.terminal?.clearOnRun],
@@ -303,63 +320,67 @@ if __name__ == "__main__":
   const handleTerminalCommand = useCallback(
     async (command: string) => {
       const args = command.trim().split(/\s+/);
-      const cmd = args[0].toLowerCase();
+      const cmd = args[0]?.toLowerCase();
+      const filename = args[1];
 
-      switch (cmd) {
-        case "run":
-          if (args.length >= 2) {
-            const filename = args[1];
-            // Find example by filename
-            const example = SIMBA_EXAMPLES.find(
-              (ex) => ex.title.toLowerCase().replace(/\s+/g, "-") === filename.replace(".smba", ""),
+      const loadExampleCode = (name: string) => {
+        const example = findExampleByFilename(name);
+        if (!example) return null;
+        handleLoadExample(example);
+        return example.code;
+      };
+
+      if (cmd === "run" || cmd === "compile" || cmd === "debug") {
+        const mode = cmd;
+        if (filename) {
+          const exampleCode = loadExampleCode(filename);
+          if (!exampleCode) {
+            const open = openFiles.find(
+              (file) => file.name.toLowerCase() === filename.toLowerCase() || file.path.toLowerCase().endsWith(filename.toLowerCase()),
             );
-            if (example) {
-              handleLoadExample(example);
-              await executeCode(false);
-            } else {
-              addOutput("error", `File not found: ${filename}`);
+            if (!open) {
+              addOutput("error", `File not found: ${filename}. Try \`ls\` or pick a program from the Examples sidebar.`);
+              return;
             }
+            await executeCode(mode, open.content);
+            return;
           }
-          break;
+          await executeCode(mode, exampleCode);
+          return;
+        }
+        await executeCode(mode);
+        return;
+      }
 
-        case "exec":
-          if (args.length >= 2) {
-            const code = args.slice(1).join(" ");
-            // Create temporary file with the code
-            const tempFile: OpenFile = {
-              id: `temp-${Date.now()}`,
-              name: "temp.smba",
-              content: code,
-              path: "temp.smba",
-              isDirty: false,
-            };
-            setOpenFiles((prev) => [...prev, tempFile]);
-            setActiveFileId(tempFile.id);
-            await executeCode(false);
-          }
-          break;
-
-        default:
-          // Command will be handled by the terminal component
-          break;
+      if (cmd === "exec") {
+        const code = args.slice(1).join(" ");
+        if (!code.trim()) {
+          addOutput("error", "Usage: exec <code>");
+          return;
+        }
+        await executeCode("run", code);
       }
     },
-    [addOutput, executeCode],
+    [addOutput, executeCode, openFiles],
   );
 
   const handleRun = useCallback(() => {
-    executeCode(false);
+    void executeCode("run");
   }, [executeCode]);
 
   const handleCompile = useCallback(() => {
-    executeCode(true);
+    void executeCode("compile");
+  }, [executeCode]);
+
+  const handleDebug = useCallback(() => {
+    void executeCode("debug");
   }, [executeCode]);
 
   const handleLoadExample = useCallback(
     (example: SimBaExample) => {
       // Check if example is already open
       const existingExample = openFiles.find(
-        (file) => file.isExample && file.name === `${example.title.toLowerCase().replace(/\s+/g, "-")}.smba`,
+        (file) => file.isExample && (file.name === exampleFileName(example) || file.id.startsWith(`example-${example.id}`)),
       );
 
       if (existingExample) {
@@ -370,10 +391,10 @@ if __name__ == "__main__":
       }
 
       const newFile: OpenFile = {
-        id: `example-${Date.now()}`,
-        name: `${example.title.toLowerCase().replace(/\s+/g, "-")}.smba`,
+        id: `example-${example.id}`,
+        name: exampleFileName(example),
         content: example.code,
-        path: `examples/${example.title.toLowerCase().replace(/\s+/g, "-")}.smba`,
+        path: `examples/${exampleFileName(example)}`,
         isDirty: false,
         isReadOnly: true,
         isExample: true,
@@ -388,119 +409,143 @@ if __name__ == "__main__":
     [openFiles, clearOutput, addOutput],
   );
 
+  const openSavedFile = useCallback(
+    (project: Project) => {
+      setOpenFiles((prev) => {
+        if (prev.some((file) => file.id === project.id)) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            id: project.id,
+            name: project.name,
+            content: project.content,
+            path: project.name,
+            isDirty: false,
+          },
+        ];
+      });
+      setActiveFileId(project.id);
+      setCurrentProject(project);
+    },
+    [],
+  );
+
   const handleLoadProject = useCallback(
     (project: Project) => {
-      const newFile: OpenFile = {
-        id: project.id,
-        name: `${project.name}.smba`,
-        content: project.content,
-        path: `${project.name}.smba`,
-        isDirty: false,
-      };
-
-      setOpenFiles((prev) => [...prev, newFile]);
-      setActiveFileId(newFile.id);
-      setCurrentProject(project);
-      clearOutput();
-      addOutput("info", `Loaded project: ${project.name}`);
+      openSavedFile(project);
+      addOutput("info", `Opened ${project.name}`);
     },
-    [clearOutput, addOutput],
+    [openSavedFile, addOutput],
   );
 
   const handleSaveProject = useCallback(
     async (name: string) => {
-      if (!user) return;
-
       const activeFile = getActiveFile();
-      if (!activeFile || activeFile.isReadOnly) return;
+      if (!activeFile || activeFile.isReadOnly || activeFile.isExample) return;
 
       try {
-        const savedProject = await saveProject(user.id, name, activeFile.content, currentProject?.id);
-        setCurrentProject(savedProject);
-
-        // Update the file to mark it as saved
-        setOpenFiles((prev) => prev.map((file) => (file.id === activeFileId ? { ...file, isDirty: false } : file)));
-
-        await loadProjects();
-        addOutput("success", `Project "${name}" saved successfully!`);
-      } catch (error) {
-        addOutput("error", "Failed to save project. Please try again.");
+        if (projects.some((file) => file.id === activeFile.id)) {
+          await persistFile(activeFile.id, { name, content: activeFile.content });
+        } else {
+          const response = await fetch("/api/files", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, content: activeFile.content }),
+          });
+          const data = (await response.json()) as { file?: unknown };
+          const saved = parseProject(data.file);
+          if (!saved) throw new Error("Invalid file response");
+          setProjects((prev) => [saved, ...prev.filter((file) => file.id !== saved.id)]);
+          setOpenFiles((prev) =>
+            prev.map((file) =>
+              file.id === activeFile.id
+                ? { id: saved.id, name: saved.name, content: saved.content, path: saved.name, isDirty: false }
+                : file,
+            ),
+          );
+          setActiveFileId(saved.id);
+          setCurrentProject(saved);
+        }
+        addOutput("success", `Saved ${name}`);
+      } catch {
+        addOutput("error", "Failed to save file. Please try again.");
       }
     },
-    [user, openFiles, activeFileId, currentProject, loadProjects, addOutput],
+    [openFiles, activeFileId, persistFile, projects, addOutput],
   );
 
-  const handleDeleteProject = useCallback(
-    async (projectId: string) => {
-      if (!user) return;
-
+  const handleDeleteFile = useCallback(
+    async (fileId: string) => {
       try {
-        await deleteProject(user.id, projectId);
-        if (currentProject?.id === projectId) {
-          setCurrentProject(null);
+        const response = await fetch(`/api/files/${fileId}`, { method: "DELETE" });
+        if (!response.ok) {
+          throw new Error("Failed to delete file");
         }
-        await loadProjects();
-        addOutput("info", "Project deleted successfully.");
-      } catch (error) {
-        addOutput("error", "Failed to delete project. Please try again.");
+
+        setProjects((prev) => prev.filter((file) => file.id !== fileId));
+        setOpenFiles((prev) => {
+          const next = prev.filter((file) => file.id !== fileId);
+          if (activeFileId === fileId) {
+            setActiveFileId(next[0]?.id ?? null);
+          }
+          return next;
+        });
+        setCurrentProject((prev) => (prev?.id === fileId ? null : prev));
+        addOutput("info", "File deleted.");
+      } catch {
+        addOutput("error", "Failed to delete file. Please try again.");
       }
     },
-    [user, currentProject, loadProjects, addOutput],
+    [activeFileId, addOutput],
+  );
+
+  const handleCreateFile = useCallback(
+    async (name = "untitled.smba", content?: string) => {
+      try {
+        const response = await fetch("/api/files", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, content }),
+        });
+        const data = (await response.json()) as { file?: unknown; error?: string };
+        const saved = parseProject(data.file);
+        if (!response.ok || !saved) {
+          throw new Error(data.error || "Failed to create file");
+        }
+
+        setProjects((prev) => [saved, ...prev]);
+        openSavedFile(saved);
+        addOutput("info", `Created ${saved.name}`);
+      } catch {
+        addOutput("error", "Failed to create file.");
+      }
+    },
+    [openSavedFile, addOutput],
+  );
+
+  const handleRenameFile = useCallback(
+    async (fileId: string, newName: string) => {
+      try {
+        await persistFile(fileId, { name: newName });
+        addOutput("info", `Renamed to ${newName}`);
+      } catch {
+        addOutput("error", "Failed to rename file.");
+      }
+    },
+    [persistFile, addOutput],
   );
 
   const handleNewProject = useCallback(() => {
-    const newFile: OpenFile = {
-      id: `new-${Date.now()}`,
-      name: "new-project.smba",
-      content: `# New SimBa Project
-# Start coding here...
-
-def main():
-    print("Hello, SimBa World!")
-
-# Example: Define a function with type annotations
-def calculate_fibonacci(n: int) -> int:
-    if n <= 1:
-        return n
-    return calculate_fibonacci(n - 1) + calculate_fibonacci(n - 2)
-
-if __name__ == "__main__":
-    main()
-    result = calculate_fibonacci(10)
-    print(f"Fibonacci(10) = {result}")
-`,
-      path: "new-project.smba",
-      isDirty: true,
-    };
-
-    setOpenFiles((prev) => [...prev, newFile]);
-    setActiveFileId(newFile.id);
-    setCurrentProject(null);
-    clearOutput();
-    addOutput("info", "Created new project. Don't forget to save it!");
-  }, [clearOutput, addOutput]);
+    void handleCreateFile("untitled.smba");
+  }, [handleCreateFile]);
 
   const handleImportFile = useCallback(
     (content: string, fileName?: string) => {
-      const extension = fileName ? fileName.split(".").pop()?.toLowerCase() : "smba";
-      const displayName = fileName || "imported.smba";
-
-      const newFile: OpenFile = {
-        id: `import-${Date.now()}`,
-        name: displayName,
-        content,
-        path: displayName,
-        isDirty: true,
-      };
-
-      setOpenFiles((prev) => [...prev, newFile]);
-      setActiveFileId(newFile.id);
-      setCurrentProject(null);
-      clearOutput();
-      addOutput("info", `Imported ${extension?.toUpperCase()} file successfully!`);
-      addOutput("info", "Content loaded into editor. You can now run or save this code.");
+      void handleCreateFile(fileName || "imported.smba", content);
     },
-    [clearOutput, addOutput],
+    [handleCreateFile],
   );
 
   const handleExportFile = useCallback(() => {
@@ -521,9 +566,15 @@ if __name__ == "__main__":
   }, [openFiles, activeFileId, addOutput]);
 
   const handleFileSelect = (file: FileNode) => {
-    if (file.type === "file") {
-      setActiveFileId(file.id);
+    if (file.type !== "file") return;
+
+    const saved = projects.find((item) => item.id === file.id);
+    if (saved) {
+      openSavedFile(saved);
+      return;
     }
+
+    setActiveFileId(file.id);
   };
 
   const handleCloseFile = (fileId: string) => {
@@ -656,11 +707,14 @@ if __name__ == "__main__":
                   currentProject={currentProject}
                   isLoadingProjects={isLoadingProjects}
                   onFileSelect={handleFileSelect}
+                  onFileCreate={() => void handleCreateFile()}
+                  onFileRename={(fileId, newName) => void handleRenameFile(fileId, newName)}
+                  onFileDelete={(fileId) => void handleDeleteFile(fileId)}
                   onLoadProject={handleLoadProject}
                   onSaveProject={handleSaveProject}
-                  onDeleteProject={handleDeleteProject}
+                  onDeleteProject={handleDeleteFile}
                   onNewProject={handleNewProject}
-                  onImportFile={(content) => handleImportFile(content)}
+                  onImportFile={handleImportFile}
                 />
               </Panel>
               <PanelResizeHandle className={styles.resizer} />
@@ -669,38 +723,52 @@ if __name__ == "__main__":
 
           {/* Main Editor Section */}
           <Panel minSize={30} className={styles.editorSection}>
-            <PanelGroup direction="vertical">
-              {/* Tab Bar */}
+            <div className={styles.editorColumn}>
               {openFiles.length > 0 && (
-                <div className={styles.tabBar}>
+                <div className={styles.tabBar} role="tablist" aria-label="Open files">
+                  <div className={styles.tabBarInner}>
                   {openFiles.map((file) => (
-                    <button
+                    <div
                       key={file.id}
                       className={classNames(
                         styles.tab,
                         file.id === activeFileId && styles.tabActive,
                         file.isExample && styles.tabExample,
                       )}
-                      onClick={() => setActiveFileId(file.id)}
                     >
-                      <span>{file.name}</span>
-                      {file.isDirty && <span style={{ color: "var(--color-primary-bg)" }}>●</span>}
-                      {file.isExample && <span className={styles.tabExampleBadge}>Ex</span>}
                       <button
+                        type="button"
+                        role="tab"
+                        aria-selected={file.id === activeFileId}
+                        className={styles.tabButton}
+                        title={file.name}
+                        onClick={() => setActiveFileId(file.id)}
+                      >
+                        <span className={styles.tabName}>{file.name}</span>
+                        {file.isDirty && <span className={styles.tabDirty}>●</span>}
+                        {file.isExample && <span className={styles.tabExampleBadge}>Ex</span>}
+                      </button>
+                      <button
+                        type="button"
                         className={styles.tabCloseButton}
+                        aria-label={`Close ${file.name}`}
+                        title={`Close ${file.name}`}
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           handleCloseFile(file.id);
                         }}
-                        title="Close"
                       >
-                        ×
+                        <X size={14} />
                       </button>
-                    </button>
+                    </div>
                   ))}
+                  <div className={styles.tabBarEnd} aria-hidden="true" />
+                  </div>
                 </div>
               )}
 
+              <PanelGroup direction="vertical" className={styles.editorPanels}>
               {/* Editor Container */}
               <Panel defaultSize={showConsole ? 70 : 100} minSize={30}>
                 <div className={styles.editorContainer}>
@@ -717,15 +785,8 @@ if __name__ == "__main__":
                       isRunning={status === "running"}
                       onRun={handleRun}
                       onCompile={handleCompile}
-                      placeholder="# Write your SimBa code here...
-# SimBa combines Python's simplicity with Rust's performance
-
-def greet(name: str) -> str:
-    return f'Hello, {name}! Welcome to SimBa!'
-
-if __name__ == '__main__':
-    message = greet('World')
-    print(message)"
+                      onDebug={handleDebug}
+                      isCompiled={compiledSource === activeFile.content}
                     />
                   ) : (
                     <div
@@ -756,13 +817,15 @@ if __name__ == '__main__':
                         onClear={clearOutput}
                         onModeChange={setConsoleMode}
                         onExecuteCommand={handleTerminalCommand}
+                        exampleFiles={SIMBA_EXAMPLES.map(exampleFileName)}
                         title="Console"
                       />
                     </div>
                   </Panel>
                 </>
               )}
-            </PanelGroup>
+              </PanelGroup>
+            </div>
           </Panel>
 
           {/* Examples Panel */}

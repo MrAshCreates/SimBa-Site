@@ -1,0 +1,15 @@
+[package]
+name = "simba"
+version = "0.1.0"
+edition = "2021"
+description = "SimBa Programming Language Interpreter"
+authors = ["Asher Winstead <asher@mrashcreates.xyz>"]
+license = "MIT"
+
+[dependencies]
+logos = "0.16.1"
+clap = { version = "4.5.21", features = ["derive"] }
+
+[[bin]]
+name = "simba"
+path = "src/main.rs"

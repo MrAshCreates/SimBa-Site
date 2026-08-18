@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Code2, User, Settings, LogOut, BookOpen, Home, Info, Menu, X } from "lucide-react";
+import { Code2, User, LogOut, BookOpen, Home, Info, Menu, X } from "lucide-react";
 import { ColorSchemeToggle } from "~/components/ui/color-scheme-toggle/color-scheme-toggle";
 import { UserDropdown } from "~/components/user-dropdown/user-dropdown";
 import { useAuth } from "~/hooks/use-auth";
@@ -29,10 +29,8 @@ export function Navigation() {
         <div className={styles.brand}>
           <Link to="/" className={styles.brandLink} onClick={closeMobileMenu}>
             <Code2 className={styles.brandIcon} />
-            <span className={styles.brandText}>
-              SimBa
-              <span className="beta-badge">Beta</span>
-            </span>
+            <span className={styles.brandText}>SimBa</span>
+            <span className="beta-badge">Beta</span>
           </Link>
         </div>
 

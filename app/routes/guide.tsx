@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router";
 import { Book, Code, Cpu, Shield, Terminal, Zap, ArrowRight } from "lucide-react";
 import type { Route } from "./+types/guide";

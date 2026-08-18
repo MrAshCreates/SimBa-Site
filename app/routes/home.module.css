@@ -28,7 +28,12 @@
   font: var(--font-display);
   color: var(--color-base-text-strong);
   margin: 0;
-  line-height: var(--font-lineheight-0);
+  line-height: var(--font-lineheight-1);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
 }
 
 .highlight {
@@ -289,6 +294,8 @@
   color: var(--color-base-text-strong);
   margin: 0;
   font-size: var(--font-size-4);
+  display: inline-flex;
+  align-items: center;
 }
 
 .languageTagline {

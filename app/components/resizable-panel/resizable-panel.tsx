@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import classNames from "classnames";
 import styles from "./resizable-panel.module.css";
 
@@ -39,7 +40,7 @@ interface ResizablePanelProps {
    * First panel content
    * @important
    */
-  children: [React.ReactNode, React.ReactNode];
+  children: [ReactNode, ReactNode];
   /**
    * Additional CSS class name
    */
@@ -63,7 +64,7 @@ export function ResizablePanel({
   const startSizeRef = useRef(0);
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+    (e: ReactMouseEvent) => {
       if (disabled) return;
 
       e.preventDefault();

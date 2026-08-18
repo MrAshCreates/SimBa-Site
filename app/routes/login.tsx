@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { LogIn, Loader2 } from "lucide-react";
 import type { Route } from "./+types/login";
 import { Navigation } from "~/components/navigation/navigation";
 import { useAuth } from "~/hooks/use-auth";
-import { authenticateUser } from "~/data/auth";
+import type { User } from "~/data/auth";
 import styles from "./login.module.css";
 
 export function meta({}: Route.MetaArgs) {
@@ -25,20 +25,27 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
-      const user = await authenticateUser(email, password);
-      if (user) {
-        login(user);
-        navigate("/playground");
-      } else {
-        setError("Invalid email or password. Please try again.");
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = (await response.json()) as { user?: User; error?: string };
+      if (!response.ok || !data.user) {
+        setError(data.error || "Invalid email or password. Please try again.");
+        return;
       }
-    } catch (err) {
+
+      login(data.user);
+      navigate("/playground");
+    } catch {
       setError("An error occurred during login. Please try again.");
     } finally {
       setIsLoading(false);
@@ -80,6 +87,7 @@ export default function Login() {
                 className={styles.input}
                 placeholder="Enter your email"
                 required
+                autoComplete="email"
                 disabled={isLoading}
               />
             </div>
@@ -96,6 +104,7 @@ export default function Login() {
                 className={styles.input}
                 placeholder="Enter your password"
                 required
+                autoComplete="current-password"
                 disabled={isLoading}
               />
             </div>

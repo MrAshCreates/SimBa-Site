@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { UserPlus, Loader2 } from "lucide-react";
 import type { Route } from "./+types/signup";
 import { Navigation } from "~/components/navigation/navigation";
 import { useAuth } from "~/hooks/use-auth";
-import { createUser } from "~/data/auth";
+import type { User } from "~/data/auth";
 import styles from "./signup.module.css";
 
 export function meta({}: Route.MetaArgs) {
@@ -72,7 +72,7 @@ export default function SignUp() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setGeneralError("");
 
@@ -83,14 +83,26 @@ export default function SignUp() {
     setIsLoading(true);
 
     try {
-      const user = await createUser(username.trim(), email.trim(), password, phone.trim() || undefined);
-      if (user) {
-        login(user);
-        navigate("/playground");
-      } else {
-        setGeneralError("Username or email already exists. Please try different values.");
+      const response = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.trim(),
+          email: email.trim(),
+          password,
+          phone: phone.trim() || undefined,
+        }),
+      });
+
+      const data = (await response.json()) as { user?: User; error?: string };
+      if (!response.ok || !data.user) {
+        setGeneralError(data.error || "Username or email already exists. Please try different values.");
+        return;
       }
-    } catch (err) {
+
+      login(data.user);
+      navigate("/playground");
+    } catch {
       setGeneralError("An error occurred during registration. Please try again.");
     } finally {
       setIsLoading(false);
@@ -123,6 +135,7 @@ export default function SignUp() {
                 className={`${styles.input} ${errors.username ? styles.inputError : ""}`}
                 placeholder="Choose a username"
                 required
+                autoComplete="username"
                 disabled={isLoading}
               />
               {errors.username && <div className={styles.fieldError}>{errors.username}</div>}
@@ -140,6 +153,7 @@ export default function SignUp() {
                 className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
                 placeholder="Enter your email"
                 required
+                autoComplete="email"
                 disabled={isLoading}
               />
               {errors.email && <div className={styles.fieldError}>{errors.email}</div>}
@@ -156,6 +170,7 @@ export default function SignUp() {
                 onChange={(e) => setPhone(e.target.value)}
                 className={`${styles.input} ${errors.phone ? styles.inputError : ""}`}
                 placeholder="Enter your phone number"
+                autoComplete="tel"
                 disabled={isLoading}
               />
               {errors.phone ? (
@@ -179,6 +194,7 @@ export default function SignUp() {
                 className={`${styles.input} ${errors.password ? styles.inputError : ""}`}
                 placeholder="Create a password"
                 required
+                autoComplete="new-password"
                 disabled={isLoading}
               />
               {errors.password ? (
@@ -200,6 +216,7 @@ export default function SignUp() {
                 className={`${styles.input} ${errors.confirmPassword ? styles.inputError : ""}`}
                 placeholder="Confirm your password"
                 required
+                autoComplete="new-password"
                 disabled={isLoading}
               />
               {errors.confirmPassword && <div className={styles.fieldError}>{errors.confirmPassword}</div>}

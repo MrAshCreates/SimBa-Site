@@ -5,6 +5,14 @@ import styles from "./chart.module.css";
 
 const THEMES = { light: "", dark: ".dark" } as const;
 
+function isSafeCssColor(value: string): boolean {
+  return /^(#(?:[0-9a-fA-F]{3,8})|(?:rgb|hsl)a?\([^)]*\)|[a-zA-Z][\w-]*)$/.test(value.trim());
+}
+
+function isSafeCssIdent(value: string): boolean {
+  return /^-?[_a-zA-Z]+[_a-zA-Z0-9-]*$/.test(value);
+}
+
 type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
@@ -41,7 +49,8 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof THEMES] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    if (!color || !isSafeCssColor(color) || !isSafeCssIdent(key)) return null;
+    return `  --color-${key}: ${color};`;
   })
   .filter(Boolean)
   .join("\n")}

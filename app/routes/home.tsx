@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router";
 import {
   Code2,
@@ -6,7 +5,6 @@ import {
   Shield,
   Rocket,
   ArrowRight,
-  Cpu,
   Gauge,
   Users,
   GitMerge,
@@ -17,7 +15,6 @@ import {
   BookOpen,
   Play,
   Download,
-  Upload,
 } from "lucide-react";
 import type { Route } from "./+types/home";
 import { Navigation } from "~/components/navigation/navigation";

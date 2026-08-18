@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import classNames from "classnames";
 import { FileText, Folder, FolderOpen, Plus, MoreHorizontal, Edit3, Trash2, ChevronRight, File } from "lucide-react";
 import styles from "./file-explorer.module.css";
@@ -13,44 +14,13 @@ export interface FileNode {
 }
 
 interface FileExplorerProps {
-  /**
-   * File tree structure
-   * @important
-   */
   files: FileNode[];
-  /**
-   * Currently active file ID
-   * @important
-   */
   activeFileId?: string;
-  /**
-   * Callback when a file is selected
-   * @important
-   */
   onFileSelect: (file: FileNode) => void;
-  /**
-   * Callback when a new file is created
-   * @important
-   */
-  onFileCreate?: (parentPath: string, name: string) => void;
-  /**
-   * Callback when a file is renamed
-   * @important
-   */
+  onFileCreate?: (parentPath: string, name?: string) => void;
   onFileRename?: (fileId: string, newName: string) => void;
-  /**
-   * Callback when a file is deleted
-   * @important
-   */
   onFileDelete?: (fileId: string) => void;
-  /**
-   * Callback when a folder is toggled
-   * @important
-   */
   onFolderToggle?: (folderId: string) => void;
-  /**
-   * Additional CSS class name
-   */
   className?: string;
 }
 
@@ -77,7 +47,6 @@ export function FileExplorer({
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  // Close context menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
@@ -91,7 +60,6 @@ export function FileExplorer({
     }
   }, [contextMenu.visible]);
 
-  // Focus rename input when renaming starts
   useEffect(() => {
     if (renamingFileId && renameInputRef.current) {
       renameInputRef.current.focus();
@@ -99,13 +67,14 @@ export function FileExplorer({
     }
   }, [renamingFileId]);
 
-  const handleContextMenu = (e: React.MouseEvent, file: FileNode) => {
+  const openMenu = (e: ReactMouseEvent, file: FileNode) => {
     e.preventDefault();
     e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setContextMenu({
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x: Math.min(rect.left, window.innerWidth - 180),
+      y: rect.bottom + 4,
       file,
     });
   };
@@ -146,10 +115,7 @@ export function FileExplorer({
 
   const handleNewFile = () => {
     const parentPath = contextMenu.file?.type === "folder" ? contextMenu.file.path : "";
-    const fileName = prompt("Enter file name:");
-    if (fileName && onFileCreate) {
-      onFileCreate(parentPath, fileName.endsWith(".smba") ? fileName : `${fileName}.smba`);
-    }
+    onFileCreate?.(parentPath);
     setContextMenu({ visible: false, x: 0, y: 0 });
   };
 
@@ -177,7 +143,7 @@ export function FileExplorer({
             isActive && styles.fileItemActive,
           )}
           onClick={() => handleFileClick(file)}
-          onContextMenu={(e) => handleContextMenu(e, file)}
+          onContextMenu={(e) => openMenu(e, file)}
           style={{ paddingLeft: `calc(var(--space-2) + ${level * 16}px)` }}
         >
           {file.type === "folder" && (
@@ -195,6 +161,7 @@ export function FileExplorer({
               className={styles.renameInput}
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleRenameSubmit();
@@ -212,23 +179,11 @@ export function FileExplorer({
             <div className={styles.fileActions}>
               <button
                 className={styles.fileActionButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRename(file);
-                }}
-                title="Rename"
+                onClick={(e) => openMenu(e, file)}
+                title="File actions"
+                aria-label={`Actions for ${file.name}`}
               >
-                <Edit3 size={12} />
-              </button>
-              <button
-                className={classNames(styles.fileActionButton, styles.deleteButton)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(file);
-                }}
-                title="Delete"
-              >
-                <Trash2 size={12} />
+                <MoreHorizontal size={14} />
               </button>
             </div>
           )}
@@ -243,18 +198,6 @@ export function FileExplorer({
 
   return (
     <div className={classNames(styles.container, className)}>
-      <div className={styles.header}>
-        <h3 className={styles.title}>Explorer</h3>
-        <div className={styles.headerActions}>
-          <button className={styles.headerButton} onClick={() => onFileCreate?.("", "new-file.smba")} title="New File">
-            <Plus size={14} />
-          </button>
-          <button className={styles.headerButton} title="More Actions">
-            <MoreHorizontal size={14} />
-          </button>
-        </div>
-      </div>
-
       <div className={styles.content}>
         {files.length === 0 ? (
           <div className={styles.emptyState}>
@@ -280,15 +223,19 @@ export function FileExplorer({
             <Plus size={14} />
             New File
           </div>
-          <div className={styles.contextMenuSeparator} />
-          <div className={styles.contextMenuItem} onClick={() => contextMenu.file && handleRename(contextMenu.file)}>
-            <Edit3 size={14} />
-            Rename
-          </div>
-          <div className={styles.contextMenuItem} onClick={() => contextMenu.file && handleDelete(contextMenu.file)}>
-            <Trash2 size={14} />
-            Delete
-          </div>
+          {contextMenu.file && (
+            <>
+              <div className={styles.contextMenuSeparator} />
+              <div className={styles.contextMenuItem} onClick={() => handleRename(contextMenu.file!)}>
+                <Edit3 size={14} />
+                Rename
+              </div>
+              <div className={styles.contextMenuItem} onClick={() => handleDelete(contextMenu.file!)}>
+                <Trash2 size={14} />
+                Delete
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -1,0 +1,3 @@
+$python
+print("Hello from embedded Python!")
+python$

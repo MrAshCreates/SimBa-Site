@@ -1,0 +1,45 @@
+# Mixed-language smoke test
+print("simba start")
+
+n = 1000
+total = 0
+i = 0
+while i < n {
+    total = total + i
+    i = i + 1
+}
+print("simba sum = " + str(total))
+
+if total % 2 == 0 {
+    print("even")
+} else {
+    print("odd")
+}
+
+def greet(name) {
+    print("Hello, " + name)
+}
+
+greet("SimBa")
+
+$python
+print("python-one")
+print(2 + 2)
+python$
+
+$python
+print("python-two")
+python$
+
+$rust
+fn main() {
+    println!("rust-one");
+    println!("{}", 2 + 2);
+}
+rust$
+
+$rust
+println!("rust-two");
+rust$
+
+print("done")

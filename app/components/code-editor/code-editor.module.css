@@ -129,6 +129,22 @@
   border-color: var(--color-accent-border-hover);
 }
 
+.compiledButton {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.debugButton {
+  background: var(--color-base-bg);
+  border-color: var(--color-base-border);
+  color: var(--color-base-text);
+}
+
+.debugButton:hover:not(:disabled) {
+  background: var(--color-base-bg-hover);
+}
+
 .buttonIcon {
   flex-shrink: 0;
 }

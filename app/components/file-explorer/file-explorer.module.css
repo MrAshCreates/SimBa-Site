@@ -98,11 +98,12 @@
 .fileActions {
   display: flex;
   gap: var(--space-0-25);
-  opacity: 0;
+  opacity: 0.35;
   transition: opacity 0.2s ease;
 }
 
-.fileItem:hover .fileActions {
+.fileItem:hover .fileActions,
+.fileItemActive .fileActions {
   opacity: 1;
 }
 

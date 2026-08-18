@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router";
 import {
   ArrowLeft,
@@ -7,7 +6,6 @@ import {
   Shield,
   Users,
   Book,
-  Github,
   Target,
   Rocket,
   Calendar,
@@ -37,7 +35,7 @@ export default function About() {
         <div className={styles.content}>
           <header className={styles.header}>
             <h1 className={styles.title}>
-              About SimBa
+              <span className={styles.titleText}>About SimBa</span>
               <span className="beta-badge">Beta</span>
             </h1>
             <p className={styles.subtitle}>

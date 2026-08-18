@@ -2,6 +2,8 @@
 
 .DS_Store
 /node_modules/
+/data/
+simba_interpreter/target/
 
 # React Router
 /.react-router/

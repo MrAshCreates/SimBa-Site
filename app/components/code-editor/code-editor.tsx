@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback, Fragment } from "react";
 import { Link } from "react-router";
 import classNames from "classnames";
 import { Editor } from "@monaco-editor/react";
+import type { BeforeMount, OnMount } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 import {
   FileText,
   Search,
@@ -9,15 +11,15 @@ import {
   Maximize2,
   Minimize2,
   ChevronRight,
-  AlertCircle,
-  AlertTriangle,
   CheckCircle,
   Loader2,
   Play,
   Code,
+  Bug,
   Lock,
 } from "lucide-react";
 import { useUserSettings } from "~/hooks/use-user-settings";
+import { analyzeSimba, hoverHelp, simbaCompletions } from "~/lib/simba-language";
 import styles from "./code-editor.module.css";
 
 interface CodeEditorProps {
@@ -81,6 +83,8 @@ interface CodeEditorProps {
    * @important
    */
   onCompile?: () => void;
+  onDebug?: () => void;
+  isCompiled?: boolean;
   /**
    * Additional CSS class name
    */
@@ -98,11 +102,15 @@ const SIMBA_LANGUAGE_CONFIG = {
 const SIMBA_MONARCH_LANGUAGE = {
   keywords: [
     "def",
+    "function",
+    "let",
+    "print",
     "class",
     "if",
     "elif",
     "else",
     "for",
+    "in",
     "while",
     "try",
     "except",
@@ -124,7 +132,9 @@ const SIMBA_MONARCH_LANGUAGE = {
     "lambda",
     "global",
     "nonlocal",
-    "assert",
+    "True",
+    "False",
+    "mut",
     "rust",
     "python",
     "async",
@@ -251,7 +261,6 @@ const SIMBA_MONARCH_LANGUAGE = {
 export function CodeEditor({
   value,
   onChange,
-  placeholder = "Enter your SimBa code here...",
   title = "Code Editor",
   language = "SimBa",
   filePath,
@@ -261,6 +270,8 @@ export function CodeEditor({
   isRunning = false,
   onRun,
   onCompile,
+  onDebug,
+  isCompiled = false,
   className,
 }: CodeEditorProps) {
   const { settings } = useUserSettings();
@@ -272,16 +283,81 @@ export function CodeEditor({
   const [selectionInfo, setSelectionInfo] = useState("");
   const [editorStats, setEditorStats] = useState({ lines: 0, chars: 0 });
 
-  const editorRef = useRef<any>(null);
-  const monacoRef = useRef<any>(null);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const monacoRef = useRef<Parameters<BeforeMount>[0] | null>(null);
 
   // Register SimBa language with Monaco
-  const handleEditorWillMount = useCallback((monaco: any) => {
+  const handleEditorWillMount = useCallback<BeforeMount>((monaco) => {
     monacoRef.current = monaco;
 
     // Register the SimBa language
     monaco.languages.register(SIMBA_LANGUAGE_CONFIG);
     monaco.languages.setMonarchTokensProvider("simba", SIMBA_MONARCH_LANGUAGE);
+    monaco.languages.setLanguageConfiguration("simba", {
+      comments: { lineComment: "#", blockComment: ["/*", "*/"] },
+      brackets: [
+        ["{", "}"],
+        ["(", ")"],
+      ],
+      autoClosingPairs: [
+        { open: "{", close: "}" },
+        { open: "(", close: ")" },
+        { open: '"', close: '"' },
+      ],
+      surroundingPairs: [
+        { open: "{", close: "}" },
+        { open: "(", close: ")" },
+        { open: '"', close: '"' },
+      ],
+    });
+
+    monaco.languages.registerCompletionItemProvider("simba", {
+      triggerCharacters: ["$", ":", " "],
+      provideCompletionItems(model, position) {
+        const line = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+        const kindMap = {
+          keyword: monaco.languages.CompletionItemKind.Keyword,
+          function: monaco.languages.CompletionItemKind.Function,
+          snippet: monaco.languages.CompletionItemKind.Snippet,
+          variable: monaco.languages.CompletionItemKind.Variable,
+        };
+        return {
+          suggestions: simbaCompletions(line).map((item) => ({
+            label: item.label,
+            kind: kindMap[item.kind],
+            detail: item.detail,
+            insertText: item.insertText,
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          })),
+        };
+      },
+    });
+
+    monaco.languages.registerHoverProvider("simba", {
+      provideHover(model, position) {
+        const word = model.getWordAtPosition(position);
+        if (!word) return null;
+        const contents = hoverHelp(word.word);
+        if (!contents) return null;
+        return {
+          range: {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          },
+          contents: [{ value: contents }],
+        };
+      },
+    });
 
     // Configure editor theme
     monaco.editor.defineTheme("simba-dark", {
@@ -313,13 +389,13 @@ export function CodeEditor({
     });
   }, []);
 
-  const handleEditorDidMount = useCallback(
-    (editor: any, monaco: any) => {
+  const handleEditorDidMount = useCallback<OnMount>(
+    (editor, monaco) => {
       editorRef.current = editor;
       setIsEditorReady(true);
 
       // Set up cursor position tracking
-      editor.onDidChangeCursorPosition((e: any) => {
+      editor.onDidChangeCursorPosition((e) => {
         setCursorPosition({
           line: e.position.lineNumber,
           column: e.position.column,
@@ -327,7 +403,7 @@ export function CodeEditor({
       });
 
       // Set up selection tracking
-      editor.onDidChangeCursorSelection((e: any) => {
+      editor.onDidChangeCursorSelection((e) => {
         const selection = e.selection;
         if (selection.isEmpty()) {
           setSelectionInfo("");
@@ -364,6 +440,24 @@ export function CodeEditor({
 
       const content = newValue || "";
       onChange(content);
+      const model = editorRef.current?.getModel();
+      const monaco = monacoRef.current;
+      if (model && monaco) {
+        const markers = analyzeSimba(content).map((diagnostic) => ({
+          startLineNumber: diagnostic.line,
+          startColumn: diagnostic.column,
+          endLineNumber: diagnostic.line,
+          endColumn: diagnostic.endColumn,
+          message: diagnostic.message,
+          severity:
+            diagnostic.severity === "error"
+              ? monaco.MarkerSeverity.Error
+              : diagnostic.severity === "warning"
+                ? monaco.MarkerSeverity.Warning
+                : monaco.MarkerSeverity.Info,
+        }));
+        monaco.editor.setModelMarkers(model, "simba", markers);
+      }
 
       // Update stats
       const lines = content.split("\n").length;
@@ -376,6 +470,7 @@ export function CodeEditor({
   const handleFind = useCallback(() => {
     if (editorRef.current && findText) {
       const model = editorRef.current.getModel();
+      if (!model) return;
       const matches = model.findMatches(findText, false, false, false, null, false);
       if (matches.length > 0) {
         editorRef.current.setSelection(matches[0].range);
@@ -387,6 +482,7 @@ export function CodeEditor({
   const handleReplace = useCallback(() => {
     if (editorRef.current && findText && !isReadOnly) {
       const selection = editorRef.current.getSelection();
+      if (!selection) return;
       const selectedText = editorRef.current.getModel()?.getValueInRange(selection);
       if (selectedText === findText) {
         editorRef.current.executeEdits("replace", [
@@ -403,8 +499,9 @@ export function CodeEditor({
   const handleReplaceAll = useCallback(() => {
     if (editorRef.current && findText && !isReadOnly) {
       const model = editorRef.current.getModel();
+      if (!model) return;
       const matches = model.findMatches(findText, false, false, false, null, false);
-      const edits = matches.map((match: any) => ({
+      const edits = matches.map((match) => ({
         range: match.range,
         text: replaceText,
       }));
@@ -419,28 +516,28 @@ export function CodeEditor({
     return (
       <div className={styles.breadcrumb}>
         {parts.map((part, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && <ChevronRight className={styles.breadcrumbSeparator} size={12} />}
-            <span className={styles.breadcrumbItem}>{part}</span>
-          </React.Fragment>
+            <Fragment key={index}>
+              {index > 0 && <ChevronRight className={styles.breadcrumbSeparator} size={12} />}
+              <span className={styles.breadcrumbItem}>{part}</span>
+            </Fragment>
         ))}
       </div>
     );
   };
 
   // Get editor options from user settings
-  const editorOptions = {
+  const editorOptions: editor.IStandaloneEditorConstructionOptions = {
     minimap: { enabled: settings.editor?.minimap !== false },
     fontSize: settings.editor?.fontSize || 14,
     fontFamily: "var(--font-monospace-code)",
-    lineNumbers: (settings.editor?.lineNumbers !== false ? "on" : "off") as "on" | "off" | "relative" | "interval",
-    renderWhitespace: "selection" as const,
+    lineNumbers: settings.editor?.lineNumbers !== false ? "on" : "off",
+    renderWhitespace: "selection",
     automaticLayout: true,
     scrollBeyondLastLine: false,
-    wordWrap: (settings.editor?.wordWrap ? "on" : "off") as "on" | "off" | "wordWrapColumn" | "bounded",
+    wordWrap: settings.editor?.wordWrap ? "on" : "off",
     folding: true,
-    foldingStrategy: "indentation" as const,
-    showFoldingControls: "always" as const,
+    foldingStrategy: "indentation",
+    showFoldingControls: "always",
     bracketPairColorization: { enabled: true },
     guides: {
       indentation: true,
@@ -460,10 +557,10 @@ export function CodeEditor({
     hover: { enabled: true },
     contextmenu: true,
     mouseWheelZoom: true,
-    cursorBlinking: "smooth" as const,
-    cursorSmoothCaretAnimation: "on" as const,
+    cursorBlinking: "smooth",
+    cursorSmoothCaretAnimation: "on",
     smoothScrolling: true,
-    multiCursorModifier: "ctrlCmd" as const,
+    multiCursorModifier: "ctrlCmd",
     formatOnPaste: true,
     formatOnType: true,
     tabSize: settings.editor?.tabSize || 4,
@@ -483,14 +580,25 @@ export function CodeEditor({
         </div>
         <div className={styles.headerRight}>
           {/* Execution Controls */}
-          {(onRun || onCompile) && (
+          {(onRun || onCompile || onDebug) && (
             <div className={styles.executionControls}>
+              {onCompile && (
+                <button
+                  className={classNames(styles.executionButton, styles.compileButton, isCompiled && styles.compiledButton)}
+                  onClick={onCompile}
+                  disabled={isRunning}
+                  title="Compile SimBa (required before run)"
+                >
+                  <Code className={styles.buttonIcon} size={14} />
+                  {isCompiled ? "Compiled" : "Compile"}
+                </button>
+              )}
               {onRun && (
                 <button
                   className={classNames(styles.executionButton, styles.runButton)}
                   onClick={onRun}
                   disabled={isRunning}
-                  title="Run Code (F5)"
+                  title="Compile, then run (F5)"
                 >
                   {isRunning ? (
                     <Loader2 className={classNames(styles.buttonIcon, "animate-spin")} size={14} />
@@ -500,15 +608,15 @@ export function CodeEditor({
                   Run
                 </button>
               )}
-              {onCompile && (
+              {onDebug && (
                 <button
-                  className={classNames(styles.executionButton, styles.compileButton)}
-                  onClick={onCompile}
+                  className={classNames(styles.executionButton, styles.debugButton)}
+                  onClick={onDebug}
                   disabled={isRunning}
-                  title="Compile Code"
+                  title="Compile, then run with debug tracing"
                 >
-                  <Code className={styles.buttonIcon} size={14} />
-                  Compile
+                  <Bug className={styles.buttonIcon} size={14} />
+                  Debug
                 </button>
               )}
             </div>

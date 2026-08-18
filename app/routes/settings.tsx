@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { CheckCircle } from "lucide-react";
 import type { Route } from "./+types/settings";
 import { Navigation } from "~/components/navigation/navigation";
 import { useAuth } from "~/hooks/use-auth";
 import { useUserSettings, type UserSettings } from "~/hooks/use-user-settings";
-import { updateUserProfile } from "~/data/auth";
+import type { User } from "~/data/auth";
 import styles from "./settings.module.css";
 
 export function meta({}: Route.MetaArgs) {
@@ -21,7 +21,7 @@ export function meta({}: Route.MetaArgs) {
 export default function Settings() {
   const { user, isAuthenticated, isLoading, login } = useAuth();
   const navigate = useNavigate();
-  const { settings, updateSettings, updateNotificationSetting, resetSettings } = useUserSettings();
+  const { settings, updateSettings, updateNotificationSetting } = useUserSettings();
   const [showSaveMessage, setShowSaveMessage] = useState(false);
 
   // User profile state
@@ -59,10 +59,20 @@ export default function Settings() {
     if (!user) return;
 
     try {
-      const updatedUser = await updateUserProfile(user.id, {
-        developerStatus,
-        simbaUsage,
-        phone,
+      const updatedUser = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          developerStatus,
+          simbaUsage,
+          phone,
+        }),
+      }).then(async (response) => {
+        const data = (await response.json()) as { user?: User };
+        if (!response.ok) {
+          throw new Error("Failed to update profile");
+        }
+        return data.user;
       });
 
       if (updatedUser) {

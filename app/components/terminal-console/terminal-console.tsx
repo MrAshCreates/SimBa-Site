@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from "react";
 import classNames from "classnames";
 import { Circle, CheckCircle, XCircle, Loader2, Trash2 } from "lucide-react";
 import type { OutputStatus, OutputLine } from "../output-console/output-console";
@@ -15,47 +15,15 @@ interface TerminalLine {
 }
 
 interface TerminalConsoleProps {
-  /**
-   * Current status of the console
-   * @important
-   * @enum ready,running,success,error
-   */
   status: OutputStatus;
-  /**
-   * Array of output lines to display in output mode
-   * @important
-   */
   output: OutputLine[];
-  /**
-   * Current console mode
-   * @important
-   * @enum output,terminal
-   */
   mode: TerminalMode;
-  /**
-   * Callback to clear the console output
-   * @important
-   */
   onClear: () => void;
-  /**
-   * Callback to change console mode
-   * @important
-   */
   onModeChange: (mode: TerminalMode) => void;
-  /**
-   * Callback to execute terminal commands
-   * @important
-   */
   onExecuteCommand: (command: string) => Promise<void>;
-  /**
-   * Title displayed in the console header
-   * @important
-   */
   title?: string;
-  /**
-   * Additional CSS class name
-   */
   className?: string;
+  exampleFiles?: string[];
 }
 
 const STATUS_CONFIG = {
@@ -90,6 +58,7 @@ export function TerminalConsole({
   onExecuteCommand,
   title = "Console",
   className,
+  exampleFiles = [],
 }: TerminalConsoleProps) {
   const { settings } = useUserSettings();
   const [terminalHistory, setTerminalHistory] = useState<TerminalLine[]>([]);
@@ -160,45 +129,35 @@ export function TerminalConsole({
       switch (cmd) {
         case "help":
           addTerminalLine("info", "Available commands:");
-          addTerminalLine("info", "  help                    - Show this help message");
-          addTerminalLine("info", "  run <filename>          - Execute a SimBa file");
-          addTerminalLine("info", "  exec <code>             - Execute inline SimBa code");
-          addTerminalLine("info", "  clear                   - Clear terminal history");
-          addTerminalLine("info", "  ls                      - List available example files");
-          addTerminalLine("info", "  examples                - Show available code examples");
+          addTerminalLine("info", "  help                 Show this help");
+          addTerminalLine("info", "  ls | examples        List example programs");
+          addTerminalLine("info", "  run [file]           Compile and run a file, or the open editor");
+          addTerminalLine("info", "  compile [file]       Compile without running");
+          addTerminalLine("info", "  debug [file]         Run with debug tracing");
+          addTerminalLine("info", "  exec <code>          Compile and run inline SimBa");
+          addTerminalLine("info", "  clear                Clear this console");
           break;
 
         case "clear":
           setTerminalHistory([]);
+          onClear();
           break;
 
         case "ls":
         case "examples":
-          addTerminalLine("info", "Available SimBa examples:");
-          addTerminalLine("info", "  hello-world.smba        - Basic greeting program");
-          addTerminalLine("info", "  rust-integration.smba   - Rust performance example");
-          addTerminalLine("info", "  memory-safety.smba      - Memory safety demonstration");
-          addTerminalLine("info", "  concurrency.smba        - Async/concurrent programming");
-          addTerminalLine("info", "");
-          addTerminalLine("info", "Use 'run <filename>' to execute an example.");
+          addTerminalLine("info", "Example programs (also in the Examples sidebar):");
+          if (exampleFiles.length === 0) {
+            addTerminalLine("error", "No examples loaded.");
+          } else {
+            exampleFiles.forEach((file) => addTerminalLine("info", `  ${file}`));
+            addTerminalLine("info", "Use: run hello-world.smba");
+          }
           break;
 
         case "run":
-          if (args.length < 2) {
-            addTerminalLine("error", "Usage: run <filename>");
-            break;
-          }
-          addTerminalLine("info", `Executing file: ${args[1]}`);
-          await onExecuteCommand(command);
-          break;
-
+        case "compile":
+        case "debug":
         case "exec":
-          if (args.length < 2) {
-            addTerminalLine("error", "Usage: exec <code>");
-            break;
-          }
-          const code = args.slice(1).join(" ");
-          addTerminalLine("info", `Executing code: ${code}`);
           await onExecuteCommand(command);
           break;
 
@@ -211,7 +170,7 @@ export function TerminalConsole({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
       handleCommand(currentCommand);
@@ -313,6 +272,12 @@ export function TerminalConsole({
               {line.content}
             </pre>
           ))}
+          {output.map((line) => (
+            <pre key={`out-${line.id}`} className={classNames(styles.terminalLine, getOutputClassName(line.type))}>
+              {formatTimestamp(line.timestamp)}
+              {line.content}
+            </pre>
+          ))}
         </div>
         <div className={styles.terminalInputArea}>
           <span className={styles.terminalPrompt} style={{ fontSize: `${settings.terminal?.fontSize || 13}px` }}>
@@ -358,7 +323,14 @@ export function TerminalConsole({
               className={classNames(styles.statusIcon, statusConfig.className, status === "running" && "animate-spin")}
             />
             <span className={statusConfig.className}>{statusConfig.label}</span>
-            <button className={styles.clearButton} onClick={onClear} title="Clear console">
+            <button
+              className={styles.clearButton}
+              onClick={() => {
+                setTerminalHistory([]);
+                onClear();
+              }}
+              title="Clear console"
+            >
               <Trash2 size={14} />
             </button>
           </div>
