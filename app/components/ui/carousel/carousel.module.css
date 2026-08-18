@@ -1,0 +1,73 @@
+.root {
+  position: relative;
+}
+
+.viewport {
+  overflow: hidden;
+}
+
+.container {
+  display: flex;
+}
+
+.containerVertical {
+  flex-direction: column;
+  margin-top: calc(-1 * var(--size-4));
+}
+
+.containerHorizontal {
+  margin-left: calc(-1 * var(--size-4));
+}
+
+.item {
+  min-width: 0;
+  flex-shrink: 0;
+  flex-grow: 0;
+  flex-basis: 100%;
+}
+
+.itemHorizontal {
+  padding-left: var(--size-4);
+}
+
+.itemVertical {
+  padding-top: var(--size-4);
+}
+
+.button {
+  position: absolute;
+  height: var(--size-8);
+  width: var(--size-8);
+  border-radius: var(--radius-round);
+}
+
+.buttonHorizontal {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.buttonVertical {
+  left: 50%;
+  transform: translateX(-50%) rotate(90deg);
+}
+
+.previous.buttonHorizontal {
+  left: calc(-1 * var(--size-12));
+}
+
+.next.buttonHorizontal {
+  right: calc(-1 * var(--size-12));
+}
+
+.previous.buttonVertical {
+  top: calc(-1 * var(--size-12));
+}
+
+.next.buttonVertical {
+  bottom: calc(-1 * var(--size-12));
+}
+
+.icon {
+  height: var(--size-4);
+  width: var(--size-4);
+}

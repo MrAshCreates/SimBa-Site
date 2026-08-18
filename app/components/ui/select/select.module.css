@@ -1,0 +1,141 @@
+.trigger {
+  display: flex;
+  height: var(--size-5);
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--radius-2);
+  padding: var(--space-1-5) var(--size-2);
+  border: var(--border-size-1) solid var(--color-base-border-subtle);
+  background: var(--color-base-bg-app);
+  color: var(--color-base-text-strong);
+}
+
+.trigger:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-base-border-subtle);
+}
+
+.trigger:disabled {
+  cursor: not-allowed;
+  background-color: var(--color-base-bg-subtle);
+  color: var(--color-base-text-muted);
+}
+
+.trigger > span {
+  line-clamp: 1;
+  overflow: hidden;
+}
+
+.icon {
+  aspect-ratio: 1;
+  width: var(--size-2-5);
+  color: var(--color-base-text-muted);
+}
+
+.scrollButton {
+  display: flex;
+  cursor: default;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+}
+
+.scrollButton:hover {
+  background: var(--color-base-bg-hover);
+  color: var(--color-base-text-strong);
+}
+
+.content {
+  position: relative;
+  z-index: var(--layer-1);
+  max-height: var(--size-48);
+  overflow: hidden;
+  border-radius: var(--radius-2);
+  background: var(--color-base-bg-app);
+  color: var(--color-base-text);
+  box-shadow: var(--shadow-3);
+  border: var(--border-size-1) solid var(--color-base-border-subtle);
+}
+
+.content[data-state="open"] {
+  animation: contentShow 200ms var(--ease-3);
+}
+
+.content[data-state="closed"] {
+  animation: contentHide 200ms var(--ease-3);
+}
+
+.viewport {
+  padding: var(--space-0-5);
+}
+
+.viewportPopper {
+  height: var(--radix-select-trigger-height);
+  min-width: var(--radix-select-trigger-width);
+}
+
+.label {
+  padding: var(--space-1);
+  font-weight: var(--font-weight-6);
+}
+
+.item {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  cursor: default;
+  user-select: none;
+  align-items: center;
+  border-radius: var(--radius-1);
+  padding: var(--space-1) var(--space-2);
+  outline: none;
+}
+
+.item:focus {
+  background: var(--color-base-bg);
+}
+
+.item[data-disabled] {
+  pointer-events: none;
+  color: var(--color-base-text-muted);
+}
+
+.indicator {
+  display: flex;
+  aspect-ratio: 1;
+  width: var(--size-2-5);
+  align-items: center;
+  justify-content: center;
+}
+
+.indicatorIcon {
+  color: var(--color-pop-bg);
+}
+
+.separator {
+  margin: var(--space-0-5);
+  height: var(--border-size-1);
+  background: var(--color-base-border-subtle);
+}
+
+@keyframes contentShow {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes contentHide {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}

@@ -1,0 +1,35 @@
+/* This file offers content size, z-index, and aspect ratio tokens. */
+
+:where(html) {
+  --size-1: 8px;
+  --size-1-5: 12px;
+  --size-2: 16px;
+  --size-2-5: 20px;
+  --size-3: 24px;
+  --size-4: 32px;
+  --size-5: 40px;
+  --size-6: 48px;
+  --size-8: 64px;
+  --size-12: 96px;
+  --size-16: 128px;
+  --size-20: 160px;
+  --size-24: 192px;
+  --size-32: 256px;
+  --size-40: 320px;
+  --size-48: 384px;
+
+  /* Z-index */
+  --layer-1: 1;
+  --layer-2: 2;
+  --layer-3: 3;
+  --layer-4: 4;
+  --layer-5: 5;
+  --layer-important: 2147483647;
+
+  /* Aspect Ratios */
+  --ratio-square: 1;
+  --ratio-landscape: 4/3;
+  --ratio-portrait: 3/4;
+  --ratio-widescreen: 16/9;
+  --ratio-ultrawide: 18/5;
+}

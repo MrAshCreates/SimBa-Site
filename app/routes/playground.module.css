@@ -1,0 +1,260 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-base-bg-app);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-base-bg);
+  border-bottom: 1px solid var(--color-base-border);
+  min-height: 40px;
+}
+
+.toolbarLeft,
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.toolbarButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-base-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolbarButton:hover {
+  background: var(--color-base-bg-hover);
+  color: var(--color-base-text);
+}
+
+.toolbarButtonActive {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-text);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font: var(--font-caption);
+  color: var(--color-base-text-muted);
+  flex: 1;
+  justify-content: center;
+}
+
+.breadcrumbItem {
+  color: var(--color-base-text);
+}
+
+.breadcrumbSeparator {
+  color: var(--color-base-text-muted);
+}
+
+.exampleBadge {
+  padding: var(--space-0-25) var(--space-0-5);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-text);
+  border-radius: var(--radius-1);
+  font-size: 10px;
+  font-weight: var(--font-weight-6);
+  margin-left: var(--space-1);
+}
+
+.main {
+  flex: 1;
+  overflow: hidden;
+}
+
+.playgroundGrid {
+  height: 100%;
+}
+
+.editorSection {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-base-bg);
+}
+
+.actionContainer {
+  background: var(--color-base-bg);
+  border-left: 1px solid var(--color-base-border);
+}
+
+.tabBar {
+  display: flex;
+  align-items: center;
+  background: var(--color-base-bg-subtle);
+  border-bottom: 1px solid var(--color-base-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabBar::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-right: 1px solid var(--color-base-border);
+  background: var(--color-base-bg-subtle);
+  color: var(--color-base-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 0;
+  position: relative;
+}
+
+.tab:hover {
+  background: var(--color-base-bg-hover);
+  color: var(--color-base-text);
+}
+
+.tabActive {
+  background: var(--color-base-bg);
+  color: var(--color-base-text);
+  border-bottom: 2px solid var(--color-accent-text);
+}
+
+.tabExample {
+  background: var(--color-accent-bg-subtle);
+}
+
+.tabExample.tabActive {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-text-strong);
+}
+
+.tabExampleBadge {
+  padding: 1px var(--space-0-5);
+  background: var(--color-accent-text);
+  color: var(--color-accent-bg);
+  border-radius: var(--radius-1);
+  font-size: 9px;
+  font-weight: var(--font-weight-6);
+}
+
+.tabCloseButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-base-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.tabCloseButton:hover {
+  background: var(--color-base-bg-hover);
+  color: var(--color-base-text);
+}
+
+.editorContainer {
+  height: 100%;
+  overflow: hidden;
+}
+
+.consoleContainer {
+  height: 100%;
+  overflow: hidden;
+}
+
+.resizer {
+  background: var(--color-base-border);
+  transition: background-color 0.2s ease;
+}
+
+.resizer:hover {
+  background: var(--color-accent-border);
+}
+
+.resizerVertical {
+  height: 2px;
+  cursor: row-resize;
+}
+
+.resizer:not(.resizerVertical) {
+  width: 2px;
+  cursor: col-resize;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-0-5) var(--space-2);
+  background: var(--color-base-bg);
+  border-top: 1px solid var(--color-base-border);
+  font: var(--font-caption);
+  color: var(--color-base-text-muted);
+  min-height: 28px;
+}
+
+.statusLeft,
+.statusRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.statusItem {
+  white-space: nowrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .toolbar {
+    padding: var(--space-0-5) var(--space-1);
+  }
+
+  .breadcrumb {
+    display: none;
+  }
+
+  .tabBar {
+    padding: 0;
+  }
+
+  .tab {
+    padding: var(--space-0-5) var(--space-1);
+    font-size: 12px;
+  }
+
+  .statusBar {
+    padding: var(--space-0-5) var(--space-1);
+  }
+
+  .statusLeft,
+  .statusRight {
+    gap: var(--space-1);
+  }
+
+  .statusItem {
+    font-size: 11px;
+  }
+}

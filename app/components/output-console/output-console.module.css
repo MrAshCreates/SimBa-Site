@@ -1,0 +1,114 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-2);
+  overflow: hidden;
+  background-color: var(--color-base-bg);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-base-bg-subtle);
+  border-bottom: 1px solid var(--color-base-border-subtle);
+  flex-shrink: 0;
+}
+
+.title {
+  font: var(--font-caption);
+  font-weight: var(--font-weight-6);
+  color: var(--color-base-text-subtle);
+  margin: 0;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font: var(--font-caption);
+  font-weight: var(--font-weight-5);
+}
+
+.statusIcon {
+  width: var(--size-3);
+  height: var(--size-3);
+}
+
+.statusReady {
+  color: var(--color-base-text-muted);
+}
+
+.statusRunning {
+  color: var(--color-primary-bg);
+}
+
+.statusSuccess {
+  color: var(--color-success-bg);
+}
+
+.statusError {
+  color: var(--color-danger-bg);
+}
+
+.outputArea {
+  flex: 1;
+  padding: var(--space-3);
+  overflow-y: auto;
+  overflow-x: auto;
+  background-color: var(--color-base-bg);
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.output {
+  font: var(--font-code);
+  line-height: var(--font-lineheight-2);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  padding: 0;
+}
+
+.outputEmpty {
+  color: var(--color-base-text-muted);
+  font-style: italic;
+}
+
+.outputSuccess {
+  color: var(--color-base-text);
+}
+
+.outputError {
+  color: var(--color-danger-bg);
+}
+
+.outputInfo {
+  color: var(--color-accent-text);
+}
+
+.outputProgram {
+  color: #a7ed6e;
+  font-weight: var(--font-weight-5);
+}
+
+.clearButton {
+  padding: var(--space-0-5) var(--space-1-5);
+  font: var(--font-caption);
+  background-color: transparent;
+  color: var(--color-base-text-muted);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clearButton:hover {
+  background-color: var(--color-base-bg-hover);
+  color: var(--color-base-text);
+  border-color: var(--color-base-border-hover);
+}

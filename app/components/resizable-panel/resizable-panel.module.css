@@ -1,0 +1,46 @@
+.container {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.resizer {
+  background-color: var(--color-base-border);
+  cursor: col-resize;
+  width: 4px;
+  transition: background-color 0.2s ease;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.resizer:hover {
+  background-color: var(--color-primary-bg);
+}
+
+.resizerVertical {
+  cursor: row-resize;
+  height: 4px;
+  width: auto;
+}
+
+.resizerActive {
+  background-color: var(--color-primary-bg);
+}
+
+.resizerDisabled {
+  cursor: default;
+  background-color: var(--color-base-border-subtle);
+}
+
+.resizerDisabled:hover {
+  background-color: var(--color-base-border-subtle);
+}

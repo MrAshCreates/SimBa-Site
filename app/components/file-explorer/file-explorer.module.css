@@ -1,0 +1,235 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--color-base-bg-subtle);
+}
+
+.header {
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-base-bg-subtle);
+  border-bottom: 1px solid var(--color-base-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font: var(--font-caption);
+  font-weight: var(--font-weight-6);
+  color: var(--color-base-text-strong);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.7rem;
+}
+
+.headerActions {
+  display: flex;
+  gap: var(--space-0-5);
+}
+
+.headerButton {
+  padding: var(--space-0-5);
+  background-color: transparent;
+  color: var(--color-base-text-muted);
+  border: none;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.headerButton:hover {
+  background-color: var(--color-base-bg-hover);
+  color: var(--color-base-text);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1);
+}
+
+.fileTree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  border-radius: var(--radius-1);
+  transition: all 0.2s ease;
+  font: var(--font-caption);
+  color: var(--color-base-text);
+  position: relative;
+  margin: 1px 0;
+}
+
+.fileItem:hover {
+  background-color: var(--color-base-bg-hover);
+}
+
+.fileItemActive {
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary-text);
+}
+
+.fileItemIcon {
+  width: var(--size-3);
+  height: var(--size-3);
+  margin-right: var(--space-1);
+  flex-shrink: 0;
+}
+
+.fileName {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileActions {
+  display: flex;
+  gap: var(--space-0-25);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.fileItem:hover .fileActions {
+  opacity: 1;
+}
+
+.fileActionButton {
+  padding: var(--space-0-25);
+  background-color: transparent;
+  color: var(--color-base-text-muted);
+  border: none;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fileActionButton:hover {
+  background-color: var(--color-base-bg-hover);
+  color: var(--color-base-text);
+}
+
+.fileItemActive .fileActionButton {
+  color: color-mix(in srgb, var(--color-primary-text) 70%, transparent);
+}
+
+.fileItemActive .fileActionButton:hover {
+  background-color: color-mix(in srgb, var(--color-primary-text) 10%, transparent);
+  color: var(--color-primary-text);
+}
+
+.deleteButton:hover {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.folderItem {
+  font-weight: var(--font-weight-5);
+}
+
+.folderToggle {
+  width: var(--size-3);
+  height: var(--size-3);
+  margin-right: var(--space-0-5);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.folderToggleExpanded {
+  transform: rotate(90deg);
+}
+
+.nestedItems {
+  margin-left: var(--space-4);
+  border-left: 1px solid var(--color-base-border-subtle);
+  padding-left: var(--space-1);
+}
+
+.emptyState {
+  text-align: center;
+  padding: var(--space-6) var(--space-2);
+  color: var(--color-base-text-muted);
+}
+
+.emptyIcon {
+  width: var(--size-8);
+  height: var(--size-8);
+  margin: 0 auto var(--space-2);
+  color: var(--color-base-text-muted);
+}
+
+.emptyTitle {
+  font: var(--font-caption);
+  font-weight: var(--font-weight-6);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.emptyDescription {
+  font: var(--font-caption);
+  line-height: var(--font-lineheight-1);
+  margin: 0;
+  font-size: 0.7rem;
+}
+
+.contextMenu {
+  position: fixed;
+  background-color: var(--color-base-bg-subtle);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-2);
+  z-index: 1000;
+  min-width: 150px;
+  padding: var(--space-1);
+}
+
+.contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font: var(--font-caption);
+  color: var(--color-base-text);
+  cursor: pointer;
+  border-radius: var(--radius-1);
+  transition: background-color 0.2s ease;
+}
+
+.contextMenuItem:hover {
+  background-color: var(--color-base-bg-hover);
+}
+
+.contextMenuSeparator {
+  height: 1px;
+  background-color: var(--color-base-border-subtle);
+  margin: var(--space-1) 0;
+}
+
+.renameInput {
+  background-color: var(--color-base-bg);
+  color: var(--color-base-text);
+  border: 1px solid var(--color-primary-bg);
+  border-radius: var(--radius-1);
+  padding: var(--space-0-5);
+  font: var(--font-caption);
+  width: 100%;
+}
+
+.renameInput:focus {
+  outline: none;
+  border-color: var(--color-primary-bg);
+}

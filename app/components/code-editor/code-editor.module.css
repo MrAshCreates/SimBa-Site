@@ -1,0 +1,333 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-base-bg);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-2);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-base-bg-subtle);
+  border-bottom: 1px solid var(--color-base-border);
+  min-height: 40px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font: var(--font-caption);
+  font-weight: var(--font-weight-5);
+  color: var(--color-base-text);
+  white-space: nowrap;
+}
+
+.fileIcon {
+  color: var(--color-base-text-muted);
+  flex-shrink: 0;
+}
+
+.readOnlyIcon {
+  color: var(--color-warning-bg);
+  flex-shrink: 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  font: var(--font-caption);
+  color: var(--color-base-text-muted);
+  overflow: hidden;
+}
+
+.breadcrumbItem {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.breadcrumbSeparator {
+  color: var(--color-base-text-muted);
+  flex-shrink: 0;
+}
+
+.executionControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-right: var(--space-2);
+  padding-right: var(--space-2);
+  border-right: 1px solid var(--color-base-border);
+}
+
+.executionButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  padding: var(--space-0-5) var(--space-1-5);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-1);
+  background: var(--color-base-bg);
+  color: var(--color-base-text);
+  font: var(--font-caption);
+  font-weight: var(--font-weight-5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.executionButton:hover:not(:disabled) {
+  background: var(--color-base-bg-hover);
+  border-color: var(--color-base-border-hover);
+}
+
+.executionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.runButton {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.runButton:hover:not(:disabled) {
+  background: var(--color-success-bg-hover);
+  border-color: var(--color-success-bg-hover);
+}
+
+.compileButton {
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent-text);
+}
+
+.compileButton:hover:not(:disabled) {
+  background: var(--color-accent-bg-hover);
+  border-color: var(--color-accent-border-hover);
+}
+
+.buttonIcon {
+  flex-shrink: 0;
+}
+
+.languageTag {
+  padding: var(--space-0-25) var(--space-1);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-text);
+  border-radius: var(--radius-1);
+  font: var(--font-caption);
+  font-weight: var(--font-weight-5);
+  white-space: nowrap;
+}
+
+.headerButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-base-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.headerButton:hover {
+  background: var(--color-base-bg-hover);
+  color: var(--color-base-text);
+}
+
+.headerButtonActive {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-text);
+}
+
+.editorArea {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+.monacoEditor {
+  height: 100% !important;
+}
+
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-base-bg);
+  z-index: 10;
+}
+
+.loadingSpinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-accent-text);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.findWidget {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--color-base-bg);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-2);
+  z-index: 20;
+}
+
+.findInput {
+  padding: var(--space-0-5) var(--space-1);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-1);
+  background: var(--color-base-bg);
+  color: var(--color-base-text);
+  font: var(--font-caption);
+  width: 120px;
+}
+
+.findInput:focus {
+  outline: none;
+  border-color: var(--color-accent-border);
+}
+
+.findInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.findActions {
+  display: flex;
+  gap: var(--space-0-5);
+}
+
+.findButton {
+  padding: var(--space-0-5) var(--space-1);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-1);
+  background: var(--color-base-bg);
+  color: var(--color-base-text);
+  font: var(--font-caption);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.findButton:hover:not(:disabled) {
+  background: var(--color-base-bg-hover);
+  border-color: var(--color-base-border-hover);
+}
+
+.findButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-0-5) var(--space-2);
+  background: var(--color-base-bg-subtle);
+  border-top: 1px solid var(--color-base-border);
+  font: var(--font-caption);
+  color: var(--color-base-text-muted);
+  min-height: 28px;
+}
+
+.statusLeft,
+.statusRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  white-space: nowrap;
+}
+
+.successIndicator {
+  color: var(--color-success-bg);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .breadcrumb {
+    display: none;
+  }
+
+  .executionControls {
+    gap: var(--space-0-5);
+  }
+
+  .executionButton {
+    padding: var(--space-0-5) var(--space-1);
+    font-size: 12px;
+  }
+
+  .findWidget {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    flex-direction: column;
+    width: 90%;
+    max-width: 300px;
+  }
+
+  .findInput {
+    width: 100%;
+  }
+
+  .findActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

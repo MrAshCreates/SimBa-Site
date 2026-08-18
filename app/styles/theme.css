@@ -1,0 +1,227 @@
+/*
+ * This file contains the CSS variables for the theme of the application.
+ * The format for the CSS variables is as follows:
+ *     --font-{type}: {value};
+ *     --color-{theme}-{type}{-variant?}: {value};
+ */
+
+/* Typography - Modern, clean fonts */
+html {
+  --font-display: var(--font-weight-7) var(--font-size-fluid-3) var(--font-geometric-humanist);
+  --font-heading: var(--font-weight-6) var(--font-size-fluid-2) var(--font-geometric-humanist);
+  --font-subheading: var(--font-weight-5) var(--font-size-fluid-1) var(--font-geometric-humanist);
+  --font-body: var(--font-size-fluid-0) var(--font-neo-grotesque);
+  --font-caption: var(--font-size-0) var(--font-neo-grotesque);
+  --font-code: var(--font-size-1) var(--font-monospace-code);
+}
+
+/* Light theme colors - Enhanced with SimBa gradients */
+html {
+  /* Base neutral colors - Clean, modern grays with subtle blue tints */
+  --color-base-bg-app: linear-gradient(135deg, #fafafa 0%, #f8faff 100%);
+  --color-base-bg-subtle: linear-gradient(135deg, #f5f5f5 0%, #f0f4ff 100%);
+  --color-base-bg: #ffffff;
+  --color-base-bg-hover: linear-gradient(135deg, #f0f0f0 0%, #eef2ff 100%);
+  --color-base-bg-active: linear-gradient(135deg, #e8e8e8 0%, #e6ebff 100%);
+
+  --color-base-border-subtle: #e5e5e5;
+  --color-base-border: #d4d4d4;
+  --color-base-border-hover: #b8b8b8;
+
+  --color-base-text-muted: #6b7280;
+  --color-base-text-subtle: #4b5563;
+  --color-base-text: #1f2937;
+  --color-base-text-strong: #111827;
+
+  /* Accent colors - Enhanced SimBa blue-purple gradient */
+  --color-accent-bg-app: linear-gradient(135deg, #f0f9ff 0%, #f3f0ff 100%);
+  --color-accent-bg-subtle: linear-gradient(135deg, #e0f2fe 0%, #ede9fe 100%);
+  --color-accent-bg: linear-gradient(135deg, #bae6fd 0%, #c4b5fd 100%);
+  --color-accent-bg-hover: linear-gradient(135deg, #7dd3fc 0%, #a78bfa 100%);
+  --color-accent-bg-active: linear-gradient(135deg, #38bdf8 0%, #8b5cf6 100%);
+
+  --color-accent-border-subtle: #7dd3fc;
+  --color-accent-border: linear-gradient(135deg, #38bdf8 0%, #8b5cf6 100%);
+  --color-accent-border-hover: linear-gradient(135deg, #0ea5e9 0%, #7c3aed 100%);
+
+  --color-accent-text-muted: #0369a1;
+  --color-accent-text-subtle: #0284c7;
+  --color-accent-text: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%);
+  --color-accent-text-strong: #0284c7;
+
+  /* Primary brand color - Enhanced SimBa gradient */
+  --color-primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --color-primary-bg-hover: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  --color-primary-text: #ffffff;
+
+  /* Success colors - Modern green */
+  --color-success-bg: #10b981;
+  --color-success-bg-hover: #059669;
+  --color-success-text: #ffffff;
+
+  /* Danger colors - Modern red */
+  --color-danger-bg: #ef4444;
+  --color-danger-bg-hover: #dc2626;
+  --color-danger-text: #ffffff;
+
+  /* Warning colors - Modern amber */
+  --color-warning-bg: #f59e0b;
+  --color-warning-bg-hover: #d97706;
+  --color-warning-text: #ffffff;
+
+  /* Syntax highlighting colors - VS Code inspired */
+  --color-syntax-keyword: #0070f3;
+  --color-syntax-string: #50a14f;
+  --color-syntax-comment: #a0a1a7;
+  --color-syntax-number: #986801;
+  --color-syntax-function: #6f42c1;
+
+  /* Beta badge colors */
+  --color-beta-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --color-beta-text: #ffffff;
+}
+
+/* Dark theme colors - Premium dark with modern accents */
+html.dark-theme {
+  /* Base neutral colors - Rich dark with subtle warmth */
+  --color-base-bg-app: #0a0a0a;
+  --color-base-bg-subtle: #111111;
+  --color-base-bg: #1a1a1a;
+  --color-base-bg-hover: #262626;
+  --color-base-bg-active: #333333;
+
+  --color-base-border-subtle: #262626;
+  --color-base-border: #404040;
+  --color-base-border-hover: #525252;
+
+  --color-base-text-muted: #a3a3a3;
+  --color-base-text-subtle: #d4d4d4;
+  --color-base-text: #f5f5f5;
+  --color-base-text-strong: #ffffff;
+
+  /* Accent colors - Modern blue for dark theme */
+  --color-accent-bg-app: #0f172a;
+  --color-accent-bg-subtle: #1e293b;
+  --color-accent-bg: #334155;
+  --color-accent-bg-hover: #475569;
+  --color-accent-bg-active: #64748b;
+
+  --color-accent-border-subtle: #475569;
+  --color-accent-border: #64748b;
+  --color-accent-border-hover: #94a3b8;
+
+  --color-accent-text-muted: #94a3b8;
+  --color-accent-text-subtle: #cbd5e1;
+  --color-accent-text: #e2e8f0;
+  --color-accent-text-strong: #f8fafc;
+
+  /* Primary brand color - Vibrant gradient for dark */
+  --color-primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --color-primary-bg-hover: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  --color-primary-text: #ffffff;
+
+  /* Success colors - Modern green for dark */
+  --color-success-bg: #10b981;
+  --color-success-bg-hover: #34d399;
+  --color-success-text: #ffffff;
+
+  /* Danger colors - Modern red for dark */
+  --color-danger-bg: #ef4444;
+  --color-danger-bg-hover: #f87171;
+  --color-danger-text: #ffffff;
+
+  /* Warning colors - Modern amber for dark */
+  --color-warning-bg: #f59e0b;
+  --color-warning-bg-hover: #fbbf24;
+  --color-warning-text: #000000;
+
+  /* Syntax highlighting colors - VS Code Dark+ inspired */
+  --color-syntax-keyword: #569cd6;
+  --color-syntax-string: #ce9178;
+  --color-syntax-comment: #6a9955;
+  --color-syntax-number: #b5cea8;
+  --color-syntax-function: #dcdcaa;
+
+  /* Beta badge colors for dark theme */
+  --color-beta-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --color-beta-text: #ffffff;
+}
+
+/* Global styling with modern touches */
+html {
+  font: var(--font-body);
+  color: var(--color-base-text);
+  background: var(--color-base-bg-app);
+  scroll-behavior: smooth;
+}
+
+/* Modern button and interactive element styling */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* Code styling with VS Code aesthetics */
+code,
+pre,
+.code-editor,
+.console {
+  font: var(--font-code);
+  font-family: var(--font-monospace-code);
+}
+
+/* Modern focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-accent-text);
+  outline-offset: 2px;
+}
+
+/* Smooth transitions for modern feel */
+* {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* Modern scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-base-bg-subtle);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-base-border);
+  border-radius: var(--radius-1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-base-border-hover);
+}
+
+/* Selection styling */
+::selection {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-text-strong);
+}
+
+/* Beta badge styling */
+.beta-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: var(--color-beta-bg);
+  color: var(--color-beta-text);
+  border-radius: var(--radius-2);
+  font-size: 10px;
+  font-weight: var(--font-weight-6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: var(--space-1);
+}

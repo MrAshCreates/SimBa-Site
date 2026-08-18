@@ -1,0 +1,45 @@
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-base-text);
+  list-style: none;
+}
+
+.item {
+}
+
+.link {
+  transition: color 200ms var(--ease-3);
+}
+
+.link:hover {
+  color: var(--color-accent-text);
+}
+
+.selected {
+  font-weight: var(--font-weight-5);
+  color: var(--color-accent-text);
+}
+
+.separator {
+  color: var(--color-base-border);
+}
+
+.separator svg {
+  aspect-ratio: 1;
+  width: var(--size-2-5);
+}
+
+.ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.ellipsis svg {
+  aspect-ratio: 1;
+  width: var(--size-2-5);
+}

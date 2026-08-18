@@ -1,0 +1,30 @@
+.alert {
+  border-radius: var(--radius-3);
+  border: var(--border-size-1) solid var(--color-base-border-subtle);
+  padding: var(--space-2);
+  font-size: var(--font-size-1);
+}
+
+/* Variants */
+.default {
+  background: var(--color-base-bg);
+  color: var(--color-base-text);
+}
+
+.destructive {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.destructive svg {
+  color: var(--color-danger-text);
+}
+
+.title {
+  margin-bottom: var(--space-0-25);
+  font-weight: var(--font-weight-5);
+  font-size: var(--font-size-2);
+}
+
+.description {
+}

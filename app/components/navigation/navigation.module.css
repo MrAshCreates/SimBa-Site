@@ -1,0 +1,297 @@
+.header {
+  background: var(--color-base-bg);
+  border-bottom: 1px solid var(--color-base-border);
+  box-shadow: var(--shadow-1);
+  position: sticky;
+  top: 0;
+  z-index: var(--layer-4);
+  backdrop-filter: blur(8px);
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+  min-height: 64px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+}
+
+.brandLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--color-base-text-strong);
+  transition: all 0.2s ease;
+}
+
+.brandLink:hover {
+  transform: translateY(-1px);
+}
+
+.brandIcon {
+  width: var(--size-6);
+  height: var(--size-6);
+  color: var(--color-accent-text);
+}
+
+.brandText {
+  font: var(--font-heading);
+  margin: 0;
+  font-size: var(--font-size-4);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  color: var(--color-base-text);
+  text-decoration: none;
+  font-weight: var(--font-weight-5);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-2);
+  transition: all 0.2s ease;
+  position: relative;
+  font-size: var(--font-size-0);
+}
+
+.link:hover {
+  color: var(--color-accent-text);
+  background: var(--color-accent-bg-subtle);
+}
+
+.link::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.link:hover::after,
+.linkActive::after {
+  width: 80%;
+}
+
+.linkActive {
+  color: var(--color-accent-text);
+  background: var(--color-accent-bg-subtle);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.authButtons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.loginButton {
+  color: var(--color-base-text);
+  text-decoration: none;
+  font-weight: var(--font-weight-5);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-2);
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.loginButton:hover {
+  color: var(--color-accent-text);
+  background: var(--color-accent-bg-subtle);
+  border-color: var(--color-accent-border-subtle);
+}
+
+.signupButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--radius-2);
+  font-weight: var(--font-weight-6);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  font-size: var(--font-size-0);
+}
+
+.signupButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+}
+
+/* Mobile Navigation */
+.mobileMenuButton {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--color-base-text);
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-2);
+  transition: all 0.2s ease;
+}
+
+.mobileMenuButton:hover {
+  background: var(--color-base-bg-hover);
+}
+
+.mobileNav {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-base-bg);
+  border-bottom: 1px solid var(--color-base-border);
+  box-shadow: var(--shadow-3);
+  padding: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mobileNav.open {
+  display: flex;
+}
+
+.mobileNavLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-base-text);
+  text-decoration: none;
+  font-weight: var(--font-weight-5);
+  padding: var(--space-3);
+  border-radius: var(--radius-2);
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.mobileNavLink:hover {
+  color: var(--color-accent-text);
+  background: var(--color-accent-bg-subtle);
+}
+
+.mobileAuthSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-base-border-subtle);
+}
+
+.mobileUserInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--color-base-text);
+  font-size: var(--font-size-0);
+  font-weight: var(--font-weight-5);
+  padding: var(--space-2);
+}
+
+.mobilePrimaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--radius-2);
+  font-weight: var(--font-weight-6);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.mobileLogoutButton {
+  background: transparent;
+  border: 2px solid var(--color-base-border);
+  color: var(--color-base-text);
+  padding: var(--space-3);
+  border-radius: var(--radius-2);
+  font-weight: var(--font-weight-5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobileLogoutButton:hover {
+  background: var(--color-base-bg-hover);
+  border-color: var(--color-danger-bg);
+  color: var(--color-danger-bg);
+}
+
+/* Mobile Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: var(--space-3);
+  }
+
+  .links {
+    display: none;
+  }
+
+  .actions > .authButtons {
+    display: none;
+  }
+
+  .mobileMenuButton {
+    display: block;
+  }
+
+  .header {
+    position: relative;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: var(--space-2) var(--space-3);
+    min-height: 56px;
+  }
+
+  .brandText {
+    font-size: var(--font-size-3);
+  }
+
+  .brandIcon {
+    width: var(--size-5);
+    height: var(--size-5);
+  }
+
+  .mobileNav {
+    padding: var(--space-3);
+  }
+}

@@ -1,0 +1,243 @@
+.container {
+  min-height: 100vh;
+  background: var(--color-base-bg-app);
+}
+
+.main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.header {
+  margin-bottom: var(--space-6);
+}
+
+.title {
+  font: var(--font-heading);
+  color: var(--color-base-text-strong);
+  margin-bottom: var(--space-2);
+}
+
+.subtitle {
+  font: var(--font-body);
+  color: var(--color-base-text-muted);
+}
+
+.settingsGrid {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.section {
+  background: var(--color-base-bg);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-3);
+  padding: var(--space-5);
+}
+
+.sectionHeader {
+  margin-bottom: var(--space-4);
+}
+
+.sectionTitle {
+  font: var(--font-subheading);
+  color: var(--color-base-text-strong);
+  margin-bottom: var(--space-1);
+}
+
+.sectionDescription {
+  font: var(--font-caption);
+  color: var(--color-base-text-muted);
+}
+
+.settingsForm {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.formGroup {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.label {
+  font: var(--font-body);
+  font-weight: var(--font-weight-5);
+  color: var(--color-base-text);
+}
+
+.description {
+  font: var(--font-caption);
+  color: var(--color-base-text-muted);
+}
+
+.input,
+.select,
+.textarea {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-2);
+  background: var(--color-base-bg-subtle);
+  color: var(--color-base-text);
+  font: var(--font-body);
+  transition: border-color 0.2s ease;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--color-accent-border);
+}
+
+.input[type="number"] {
+  max-width: 120px;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.toggleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--color-base-border);
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.toggle:focus {
+  outline: 2px solid var(--color-accent-border);
+  outline-offset: 2px;
+}
+
+.toggle.active {
+  background: var(--color-accent-bg-active);
+}
+
+.toggleSlider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.toggle.active .toggleSlider {
+  transform: translateX(20px);
+}
+
+.toggleLabel {
+  font: var(--font-body);
+  color: var(--color-base-text);
+}
+
+.subSectionTitle {
+  font: var(--font-subheading);
+  color: var(--color-base-text-strong);
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: var(--font-size-2);
+}
+
+.notificationGroup {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-base-bg-subtle);
+  border-radius: var(--radius-2);
+  border: 1px solid var(--color-base-border-subtle);
+}
+
+.previewSection {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-base-bg-subtle);
+  border-radius: var(--radius-2);
+  border: 1px solid var(--color-base-border-subtle);
+}
+
+.previewTitle {
+  font: var(--font-body);
+  font-weight: var(--font-weight-5);
+  color: var(--color-base-text);
+  margin-bottom: var(--space-2);
+}
+
+.previewCode {
+  font-family: var(--font-monospace-code);
+  background: var(--color-base-bg);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-2);
+  padding: var(--space-3);
+  color: var(--color-base-text);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.saveButton {
+  background: var(--color-primary-bg);
+  color: var(--color-primary-text);
+  border: none;
+  border-radius: var(--radius-2);
+  padding: var(--space-2) var(--space-4);
+  font: var(--font-body);
+  font-weight: var(--font-weight-5);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  justify-self: start;
+}
+
+.saveButton:hover {
+  background: var(--color-primary-bg-hover);
+}
+
+.saveButton:disabled {
+  background: var(--color-base-border);
+  color: var(--color-base-text-muted);
+  cursor: not-allowed;
+}
+
+.successMessage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  border-radius: var(--radius-2);
+  font: var(--font-body);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .main {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .settingsGrid {
+    gap: var(--space-4);
+  }
+
+  .section {
+    padding: var(--space-4);
+  }
+
+  .notificationGroup {
+    gap: var(--space-2);
+  }
+}

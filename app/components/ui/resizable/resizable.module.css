@@ -1,0 +1,49 @@
+.group {
+  display: flex;
+  /* height: 100%; */
+  /* width: 100%; */
+}
+
+.group[data-panel-group-direction="vertical"] {
+  flex-direction: column;
+}
+
+.handle {
+  position: relative;
+  display: flex;
+  width: 2px;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-base-bg);
+}
+
+.handle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--color-base-border);
+}
+
+.handle[data-panel-group-direction="vertical"] {
+  height: 2px;
+  width: 100%;
+}
+
+.handle[data-panel-group-direction="vertical"] > div {
+  transform: rotate(90deg);
+}
+
+.gripWrapper {
+  z-index: var(--layer-1);
+  display: flex;
+  height: var(--size-4);
+  width: var(--size-3);
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-1);
+  border: var(--border-size-1) solid var(--color-base-border-subtle);
+  background: var(--color-base-bg-subtle);
+}
+
+.gripIcon {
+  height: var(--size-2);
+  width: var(--size-2);
+}

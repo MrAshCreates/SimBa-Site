@@ -1,0 +1,24 @@
+.textarea {
+  display: flex;
+  min-height: var(--size-12);
+  border-radius: var(--radius-2);
+  border: var(--border-size-1) solid var(--color-base-border);
+  background: var(--color-base-bg-app);
+  color: var(--color-base-text);
+  padding: var(--space-1) var(--space-1-5);
+}
+
+.textarea::placeholder {
+  color: var(--color-base-text-subtle);
+}
+
+.textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--color-accent-border-subtle);
+}
+
+.textarea:disabled {
+  cursor: not-allowed;
+  background-color: var(--color-base-bg-subtle);
+  color: var(--color-base-text-muted);
+}

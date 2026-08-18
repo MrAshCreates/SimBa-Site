@@ -1,0 +1,23 @@
+.item {
+  display: grid;
+  gap: var(--size-2);
+}
+
+.label {
+  color: var(--color-base-text);
+}
+
+.labelError {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.description {
+  font-size: var(--font-size-2);
+  color: var(--color-base-text);
+}
+
+.message {
+  font-size: var(--font-size-2);
+  font-weight: var(--font-weight-5);
+}

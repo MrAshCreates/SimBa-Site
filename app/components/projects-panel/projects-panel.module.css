@@ -1,0 +1,255 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  padding: var(--space-3);
+  background-color: var(--color-base-bg-subtle);
+  border-bottom: 1px solid var(--color-base-border-subtle);
+}
+
+.title {
+  font: var(--font-caption);
+  font-weight: var(--font-weight-6);
+  color: var(--color-base-text-strong);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.actionButton {
+  flex: 1;
+  padding: var(--space-1-5) var(--space-2);
+  font: var(--font-caption);
+  font-weight: var(--font-weight-5);
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary-text);
+  border: none;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.actionButton:hover {
+  background-color: var(--color-primary-bg-hover);
+}
+
+.secondaryButton {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-text);
+}
+
+.secondaryButton:hover {
+  background-color: var(--color-accent-bg-hover);
+}
+
+.buttonIcon {
+  width: var(--size-3);
+  height: var(--size-3);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+.projectsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.projectItem {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2-5);
+  background-color: var(--color-base-bg);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.projectItem:hover {
+  background-color: var(--color-base-bg-hover);
+  border-color: var(--color-base-border-hover);
+}
+
+.projectItemActive {
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary-text);
+  border-color: var(--color-primary-bg);
+}
+
+.projectItemActive:hover {
+  background-color: var(--color-primary-bg-hover);
+}
+
+.projectName {
+  font: var(--font-caption);
+  font-weight: var(--font-weight-6);
+  margin: 0 0 var(--space-0-5) 0;
+  word-break: break-word;
+}
+
+.projectMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.projectDate {
+  font: var(--font-caption);
+  color: var(--color-base-text-muted);
+  font-size: 0.7rem;
+}
+
+.projectItemActive .projectDate {
+  color: color-mix(in srgb, var(--color-primary-text) 70%, transparent);
+}
+
+.projectActions {
+  display: flex;
+  gap: var(--space-0-5);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.projectItem:hover .projectActions {
+  opacity: 1;
+}
+
+.projectActionButton {
+  padding: var(--space-0-25);
+  background-color: transparent;
+  color: var(--color-base-text-muted);
+  border: none;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.projectActionButton:hover {
+  background-color: var(--color-base-bg-hover);
+  color: var(--color-base-text);
+}
+
+.projectItemActive .projectActionButton {
+  color: color-mix(in srgb, var(--color-primary-text) 70%, transparent);
+}
+
+.projectItemActive .projectActionButton:hover {
+  background-color: color-mix(in srgb, var(--color-primary-text) 10%, transparent);
+  color: var(--color-primary-text);
+}
+
+.deleteButton:hover {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.emptyState {
+  text-align: center;
+  padding: var(--space-6) var(--space-2);
+  color: var(--color-base-text-muted);
+}
+
+.emptyIcon {
+  width: var(--size-12);
+  height: var(--size-12);
+  margin: 0 auto var(--space-3);
+  color: var(--color-base-text-muted);
+}
+
+.emptyTitle {
+  font: var(--font-caption);
+  font-weight: var(--font-weight-6);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.emptyDescription {
+  font: var(--font-caption);
+  line-height: var(--font-lineheight-1);
+  margin: 0;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  color: var(--color-base-text-muted);
+  gap: var(--space-2);
+}
+
+.importSection {
+  border-top: 1px solid var(--color-base-border-subtle);
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.importTitle {
+  font: var(--font-caption);
+  font-weight: var(--font-weight-6);
+  color: var(--color-base-text-subtle);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.importTextarea {
+  width: 100%;
+  height: 80px;
+  padding: var(--space-2);
+  font: var(--font-code);
+  font-size: 0.7rem;
+  background-color: var(--color-base-bg);
+  color: var(--color-base-text);
+  border: 1px solid var(--color-base-border);
+  border-radius: var(--radius-1);
+  resize: vertical;
+  margin-bottom: var(--space-2);
+}
+
+.importTextarea:focus {
+  outline: none;
+  border-color: var(--color-primary-bg);
+}
+
+.importTextarea::placeholder {
+  color: var(--color-base-text-muted);
+}
+
+.importButton {
+  width: 100%;
+  padding: var(--space-1-5);
+  font: var(--font-caption);
+  font-weight: var(--font-weight-5);
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-text);
+  border: none;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.importButton:hover:not(:disabled) {
+  background-color: var(--color-accent-bg-hover);
+}
+
+.importButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

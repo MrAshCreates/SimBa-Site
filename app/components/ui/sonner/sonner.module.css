@@ -1,0 +1,10 @@
+.toaster {
+  --viewport-padding: var(--space-4);
+}
+
+.toast {
+  background: var(--color-base-bg);
+  color: var(--color-base-text);
+  border: var(--border-size-1) solid var(--color-base-border-subtle);
+  box-shadow: var(--shadow-4);
+}
