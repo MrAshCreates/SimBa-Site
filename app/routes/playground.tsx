@@ -265,7 +265,18 @@ export default function Playground() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code, mode: requestMode }),
         });
-        const result = (await response.json()) as ExecutionResult & { error?: string };
+        const text = await response.text();
+        let result: ExecutionResult & { error?: string };
+        try {
+          result = JSON.parse(text) as ExecutionResult & { error?: string };
+        } catch {
+          const looksLikeHtml = /^\s*</.test(text);
+          throw new Error(
+            looksLikeHtml
+              ? `The runner returned an HTML error page (${response.status}). This usually means the Worker timed out or ran out of CPU on a long program.`
+              : `Unexpected response from the runner (${response.status}).`,
+          );
+        }
         if (!response.ok) {
           throw new Error(result.error || `HTTP error! status: ${response.status}`);
         }
@@ -283,7 +294,7 @@ export default function Playground() {
           addRunOutput("info", `=== ${label} ===`);
           text.split("\n").forEach((line) => {
             if (!line.trim()) return;
-            if (line.startsWith("[debug]")) {
+            if (line.startsWith("[debug]") || line.startsWith("[playground]")) {
               addRunOutput("info", line);
             } else {
               addRunOutput(line.toLowerCase().includes("error") ? "error" : "program", line);
@@ -293,19 +304,18 @@ export default function Playground() {
       };
 
       try {
-        addRunOutput("info", "=== SimBa Compile ===");
-        const compiled = await runRequest("compile");
-        printResult(compiled, "Compiler");
-        if (compiled.status !== "success") {
-          addRunOutput("error", "Compile failed. Fix the errors above before running.");
-          setStatus("error");
-          setCompiledSource(null);
-          return false;
-        }
-        addRunOutput("success", "Compile succeeded.");
-        setCompiledSource(code);
-
         if (mode === "compile") {
+          addRunOutput("info", "=== SimBa Compile ===");
+          const compiled = await runRequest("compile");
+          printResult(compiled, "Compiler");
+          if (compiled.status !== "success") {
+            addRunOutput("error", "Compile failed. Fix the errors above before running.");
+            setStatus("error");
+            setCompiledSource(null);
+            return false;
+          }
+          addRunOutput("success", "Compile succeeded.");
+          setCompiledSource(code);
           setStatus("success");
           return true;
         }
@@ -315,10 +325,12 @@ export default function Playground() {
         printResult(executed, mode === "debug" ? "Debug output" : "Program output");
         if (executed.status === "success") {
           addRunOutput("success", mode === "debug" ? "Debug run finished." : "Execution completed successfully.");
+          setCompiledSource(code);
           setStatus("success");
           return true;
         }
         setStatus("error");
+        setCompiledSource(null);
         return false;
       } catch (error) {
         addRunOutput(

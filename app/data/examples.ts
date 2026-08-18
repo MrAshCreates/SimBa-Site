@@ -155,7 +155,7 @@ rust$
     id: "mixed-speed",
     title: "Mixed Speed Lab",
     description:
-      "One file with SimBa, two Python embeds, and two Rust embeds. Times the same sum in all three languages.",
+      "One file with SimBa, two Python embeds, and two Rust embeds. Times the same sum in all three languages. Online, SimBa runs and embeds are skipped; use the CLI for Python and Rust.",
     code: `# SimBa writes like Python, runs as a compiled-host language,
 # and can embed real Python and Rust in the same file.
 

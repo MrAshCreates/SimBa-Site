@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use crate::{Stmt, Expr, Token, Value};
 use crate::embed;
 
-const MAX_STEPS: u32 = 2_000_000;
+const MAX_STEPS: u32 = 12_000_000;
+const MAX_DEBUG_LINES: u32 = 250;
 const MAX_OUTPUT: usize = 100_000;
 
 #[derive(Clone)]
@@ -24,6 +25,7 @@ pub struct Interpreter {
     debug: bool,
     output: String,
     steps: u32,
+    debug_logs: u32,
 }
 
 impl Interpreter {
@@ -34,6 +36,7 @@ impl Interpreter {
             debug: false,
             output: String::new(),
             steps: 0,
+            debug_logs: 0,
         }
     }
 
@@ -83,9 +86,17 @@ impl Interpreter {
     }
 
     fn debug_log(&mut self, message: &str) {
-        if self.debug {
-            self.emit_line(&format!("[debug] {message}"));
+        if !self.debug {
+            return;
         }
+        self.debug_logs = self.debug_logs.saturating_add(1);
+        if self.debug_logs > MAX_DEBUG_LINES {
+            if self.debug_logs == MAX_DEBUG_LINES + 1 {
+                self.emit_line("[debug] further debug output omitted");
+            }
+            return;
+        }
+        self.emit_line(&format!("[debug] {message}"));
     }
 
     fn execute(&mut self, stmt: &Stmt) -> Result<ExecResult, String> {
@@ -119,6 +130,7 @@ impl Interpreter {
             }
             Stmt::While { condition, body } => {
                 loop {
+                    self.tick()?;
                     let condition_value = self.evaluate(condition)?;
                     if !self.is_truthy(&condition_value) {
                         break;
@@ -139,6 +151,7 @@ impl Interpreter {
                 self.debug_log(&format!("for {variable} in {start}..{end}"));
                 let mut i = start;
                 while i < end {
+                    self.tick()?;
                     self.globals.insert(variable.clone(), Value::Integer(i));
                     match self.execute_block(body)? {
                         ExecResult::Return(value) => return Ok(ExecResult::Return(value)),

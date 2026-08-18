@@ -11,12 +11,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(target_arch = "wasm32")]
 pub fn run_python(_code: &str) -> Result<String, String> {
-    Err("Embedded Python (`$python` ... `python$`) is not available in the online playground. Use the SimBa CLI locally.".to_string())
+    Ok("[playground] skipped $python block — embedded Python runs in the SimBa CLI (`simba run` or npm run dev).\n".to_string())
 }
 
 #[cfg(target_arch = "wasm32")]
 pub fn run_rust(_code: &str) -> Result<String, String> {
-    Err("Embedded Rust (`$rust` ... `rust$`) is not available in the online playground. Use the SimBa CLI locally.".to_string())
+    Ok("[playground] skipped $rust block — embedded Rust runs in the SimBa CLI (`simba run` or npm run dev).\n".to_string())
 }
 
 #[cfg(not(target_arch = "wasm32"))]
